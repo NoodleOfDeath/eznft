@@ -1,7 +1,7 @@
 {
-  "name": "ez-nft",
+  "name": "eznft",
   "description": "Yet another library for generating NFT artwork, uploading NFT assets and metadata to IPFS, deploying NFT smart contracts, and minting NFT collections",
-  "version": "0.0.2-patch",
+  "version": "0.0.3-rebrand",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -12,14 +12,14 @@
     "node": ">=8.0.0"
   },
   "bugs": {
-    "url": "https://github.com/noodleofdeath/ez-nft/issues",
+    "url": "https://github.com/noodleofdeath/eznft/issues",
     "email": "github@noodleofdeath.com"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/noodleofdeath/ez-nft.git"
+    "url": "https://github.com/noodleofdeath/eznft.git"
   },
-  "homepage": "https://github.com/noodleofdeath/ez-nft",
+  "homepage": "https://github.com/noodleofdeath/eznft",
   "scripts": {
     "build": "rimraf dist && tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\"",

@@ -1,7 +1,7 @@
-# ez-nft
+# eznft
 
-[![npm](https://img.shields.io/npm/dm/ez-nft.svg?maxAge=600)](https://www.npmjs.com/package/ez-nft)
-[![npm](https://img.shields.io/npm/l/ez-nft.svg?maxAge=600)](https://github.com/noodleofdeath/ez-nft/blob/main/LICENSE)
+[![npm](https://img.shields.io/npm/dm/eznft.svg?maxAge=600)](https://www.npmjs.com/package/eznft)
+[![npm](https://img.shields.io/npm/l/eznft.svg?maxAge=600)](https://github.com/noodleofdeath/eznft/blob/main/LICENSE)
 
 ---
 
@@ -26,8 +26,8 @@ Yet another library for generating NFT artwork, uploading NFT assets and metadat
 ### CLI Tool
 
 ```bash
-$ git clone https://github.com/noodleofdeath/ez-nft
-$ cd ez-nft
+$ git clone https://github.com/noodleofdeath/eznft
+$ cd eznft
 $ npm install
 $ ./eznft.ts
 usage: eznft.ts [-h] [-v] {deploy,d,dep,generate,g,gen,mint,m,upload,u,up} ...
@@ -54,7 +54,7 @@ Generate 10 unique pieces of artwork using the [HashLips Art Engine](https://git
 ```bash
 $ ./eznft.ts gen --layers ~/my-nft-project/layers --output ~/my-nft-project/output --size 10 --very-verbose
 INFO: downloaded archive to /Users/tmorgan/.gitly/github/HashLips/hashlips_art_engine/v1.1.2_patch_v6.tar.gz
-INFO: Copied repo to: /var/folders/k5/p95sjcmx26z4yz53frn6fskr0000gp/T/ez-nft-0.0.1-1651622515498
+INFO: Copied repo to: /var/folders/k5/p95sjcmx26z4yz53frn6fskr0000gp/T/eznft-0.0.1-1651622515498
 INFO: Overwriting layers directory
 INFO: Updating project config
 INFO: Project config updated
@@ -106,7 +106,7 @@ DONE
 ### NPM Package
 
 ```bash
-npm i ez-nft
+npm i eznft
 ```
 
 #### Generate Artwork (NPM)
@@ -114,7 +114,7 @@ npm i ez-nft
 Generate 10 unique pieces of artwork using the [HashLips Art Engine](https://github.com/HashLips/hashlips_art_engine).
 
 ```typescript
-import { HashLipsNftGenerator } from 'ez-nft';
+import { HashLipsNftGenerator } from 'eznft';
 const generatorService = new HashLipsNftGenerator({
   size: 10,
   layers: '~/my-nft-project/layers',
@@ -130,7 +130,7 @@ Generate API keys for Pinata [here](https://app.pinata.cloud/keys) then
 add `PINATA_API_KEY` and `PINATA_SECRET_API_KEY` to your `.env` file. See [.env-example](.env-example).
 
 ```typescript
-import { PinataUploadService } from 'ez-nft';
+import { PinataUploadService } from 'eznft';
 const uploadService = new PinataUploadService(logLevel: 7); // VERBOSE
 uploadService.uploadAll('~/my-nft-project/output');
 ```
