@@ -41,6 +41,7 @@ const subparsers = parser.add_subparsers({
 const deployParser = subparsers.add_parser('deploy', { aliases: ['d', 'dep'], help: 'deploy a smart contract' });
 deployParser.add_argument('contract', {
   help: 'path of contract to deploy (.sol file)',
+  required: true,
 });
 deployParser.add_argument('network', {
   default: 'ropsten',
@@ -55,24 +56,29 @@ generateParser.add_argument('-e', '--engine', {
   help: 'engine to use for nft generation (default: %(default)s)',
   nargs: '?',
 });
-generateParser.add_argument('-s', '--size', {
-  type: 'int',
-  help: 'size of the collection to generate',
-});
 generateParser.add_argument('-l', '--layers', {
   help: 'directory containing the layers to generate artwork from',
+  required: true,
 });
 generateParser.add_argument('-o', '--output', {
   help: 'directory to output generated images and metadata to',
+  required: true,
+});
+generateParser.add_argument('-s', '--size', {
+  type: 'int',
+  help: 'size of the collection to generate',
+  required: true,
 });
 addCommonArgs(generateParser);
 
 const mintParser = subparsers.add_parser('mint', { aliases: ['m'], help: 'mint an NFT asset' });
 mintParser.add_argument('contract', {
   help: 'contract to mint with',
+  required: true,
 });
 mintParser.add_argument('url', {
   help: 'ipfs url to mint. may be of the format "ipfs://<cid>" or just "<cid>"',
+  required: true,
 });
 addCommonArgs(mintParser);
 
@@ -84,14 +90,13 @@ uploadParser.add_argument('-i', '--ipfs', {
 });
 uploadParser.add_argument('-s', '--source', {
   help: 'source directory to upload NFT assets from',
+  required: true,
 });
 uploadParser.add_argument('--api-key', {
   help: `ipfs api key (default: <IPFS>_API_KEY)`,
-  nargs: '?',
 });
 uploadParser.add_argument('--secret-api-key', {
   help: `ipfs secret api key (default: <IPFS>_SECRET_API_KEY)`,
-  nargs: '?',
 });
 addCommonArgs(uploadParser);
 
