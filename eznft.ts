@@ -41,7 +41,6 @@ const subparsers = parser.add_subparsers({
 const deployParser = subparsers.add_parser('deploy', { aliases: ['d', 'dep'], help: 'deploy a smart contract' });
 deployParser.add_argument('contract', {
   help: 'path of contract to deploy (.sol file)',
-  required: true,
 });
 deployParser.add_argument('network', {
   default: 'ropsten',
@@ -74,11 +73,9 @@ addCommonArgs(generateParser);
 const mintParser = subparsers.add_parser('mint', { aliases: ['m'], help: 'mint an NFT asset' });
 mintParser.add_argument('contract', {
   help: 'contract to mint with',
-  required: true,
 });
 mintParser.add_argument('url', {
   help: 'ipfs url to mint. may be of the format "ipfs://<cid>" or just "<cid>"',
-  required: true,
 });
 addCommonArgs(mintParser);
 
