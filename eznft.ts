@@ -2,12 +2,12 @@
 
 // Import modules
 import 'dotenv/config';
-import { ArgumentParser, RawDescriptionHelpFormatter } from 'argparse';
 import * as colors from 'ansi-colors';
-import { version, description } from './package.json';
 import * as path from 'path';
+import { ArgumentParser, RawDescriptionHelpFormatter } from 'argparse';
 import { exit } from 'process';
-import { ELogLevel, HashLipsNftGenerator } from './src';
+import { version, description } from './package.json';
+import { ELogLevel, HashLipsNftGenerator, PinataUploadService } from './src';
 
 function usage() {
   parser.print_help();
@@ -27,6 +27,7 @@ class HelpFormatter extends RawDescriptionHelpFormatter {
   }
 }
 
+let args: any = {};
 const parser = new ArgumentParser({
   description: [colors.yellowBright(`${__this} v${version}`), colors.cyanBright(description)].join('\n'),
   formatter_class: HelpFormatter,
@@ -76,14 +77,25 @@ mintParser.add_argument('url', {
 addCommonArgs(mintParser);
 
 const uploadParser = subparsers.add_parser('upload', { aliases: ['u', 'up'], help: 'upload an NFT asset to IPFS' });
-uploadParser.add_argument('ipfs', {
+uploadParser.add_argument('-i', '--ipfs', {
   default: 'pinata',
   help: 'ipfs service to upload nft assets to (default: %(default)s)',
   nargs: '?',
 });
+uploadParser.add_argument('-s', '--source', {
+  help: 'source directory to upload NFT assets from',
+});
+uploadParser.add_argument('--api-key', {
+  help: `ipfs api key (default: <IPFS>_API_KEY)`,
+  nargs: '?',
+});
+uploadParser.add_argument('--secret-api-key', {
+  help: `ipfs secret api key (default: <IPFS>_SECRET_API_KEY)`,
+  nargs: '?',
+});
 addCommonArgs(uploadParser);
 
-const args = parser.parse_args();
+args = parser.parse_args();
 console.log(args);
 
 const command = args.command as string;
@@ -92,24 +104,30 @@ const logLevel = (args.very_verbose as boolean) ? ELogLevel.VERBOSE : (args.verb
 if (/^d(ep|eploy)?$/i.test(command)) {
   // TODO: - Deploy
 } else if (/^g(en|enerate)?$/i.test(command)) {
-  // TODO: - Generate
   const engine = args.engine as string;
   const size = args.size as number;
   const layers = args.layers as string;
   const output = args.output as string;
   if (/^hashlips$/i.test(engine)) {
-    const engine = new HashLipsNftGenerator({
+    const generatorService = new HashLipsNftGenerator({
       size: size,
       layers: layers,
       output: output,
       logLevel: logLevel,
     });
-    engine.generate();
+    generatorService.generate();
   }
 } else if (/^m(int)?$/i.test(command)) {
   // TODO: - Mint
 } else if (/^u(p|pload)?$/i.test(command)) {
-  // TODO: - Upload
+  const ipfs = args.ipfs as string;
+  const source = args.source as string;
+  const apiKey = process.env[`${ipfs.toUpperCase()}_API_KEY`] || args.api_key;
+  const secretApiKey = process.env[`${ipfs.toUpperCase()}_SECRET_API_KEY`] || args.secret_api_key;
+  if (/^pinata$/i.test(ipfs)) {
+    const uploadService = new PinataUploadService({ apiKey: apiKey, secretApiKey: secretApiKey, logLevel: logLevel });
+    uploadService.uploadAll(source);
+  }
 } else {
   usage();
 }

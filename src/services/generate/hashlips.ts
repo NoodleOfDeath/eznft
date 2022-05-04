@@ -2,9 +2,9 @@ import * as fs from 'fs-extra';
 import * as os from 'os';
 import * as path from 'path';
 import { execSync } from 'child_process';
+import { download, extract } from 'gitly';
 import { name, version } from '../../../package.json';
 import { ILoggableServiceProps, INftGenerator, INftGeneratorProps } from '../../types';
-import { download, extract } from 'gitly';
 import { ABaseLoggableService } from '../service';
 
 export interface IHashLipsNftGeneratorProps extends INftGeneratorProps, ILoggableServiceProps {}
@@ -37,9 +37,9 @@ export class HashLipsNftGenerator extends ABaseLoggableService<IHashLipsNftGener
             .readdirSync(this.layers)
             .filter(layer => !/^\./.test(layer) && fs.readdirSync(path.join(this.layers, layer)).length > 0);
           fs.removeSync(path.join(dest, 'layers'));
-          fs.copySync(this.layers, path.join(dest, 'layers'), { overwrite: true });
+          fs.copySync(this.layers, path.join(dest, 'layers'));
           this.INFO(`Updating project config`);
-          let config = fs.readFileSync(path.join(dest, 'src/config.js'), { encoding: 'utf8' });
+          let config = fs.readFileSync(path.join(dest, 'src', 'config.js'), { encoding: 'utf8' });
           config = config.replace(
             /const layerConfigurations[\s\S]*?];/i,
             `const layerConfigurations = [${JSON.stringify(
@@ -51,15 +51,17 @@ export class HashLipsNftGenerator extends ABaseLoggableService<IHashLipsNftGener
               2,
             )}];`,
           );
-          fs.writeFileSync(path.join(dest, 'src/config.js'), config);
+          fs.writeFileSync(path.join(dest, 'src', 'config.js'), config);
           this.INFO(`Project config updated`);
           this.INFO(execSync('npm install && npm run build', { cwd: dest, encoding: 'utf8' }));
           this.INFO(`Copying assets to output directory ${this.output}`);
           if (fs.existsSync(this.output)) fs.removeSync(this.output);
           fs.mkdirSync(this.output, { recursive: true });
           fs.copySync(path.join(dest, 'build'), this.output);
-          this.INFO(`${fs.readdirSync(path.join(this.output, 'images'))}`);
-          this.INFO(`${fs.readdirSync(path.join(this.output, 'json'))}`);
+          this.INFO(
+            `Assets generated. To upload them to pinata with the CLI tool use "eznft upload --source ${this.output}"`,
+          );
+          console.log('DONE');
           resolve();
         })
         .catch((error: Error) => reject(error));
