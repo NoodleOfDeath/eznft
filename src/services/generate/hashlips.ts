@@ -3,7 +3,6 @@ import * as os from 'os';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { download, extract } from 'gitly';
-import { name, version } from '../../../package.json';
 import { ILoggableServiceProps, INftGenerator, INftGeneratorProps } from '../../types';
 import { ABaseLoggableService } from '../service';
 
@@ -17,7 +16,7 @@ export class HashLipsNftGenerator extends ABaseLoggableService<IHashLipsNftGener
   private readonly repo = 'HashLips/hashlips_art_engine#v1.1.2_patch_v6';
 
   private get repoDest(): string {
-    return path.join(os.tmpdir(), `${name}-${version}-${new Date().valueOf()}`);
+    return path.join(os.tmpdir(), `eznft-${new Date().valueOf()}`);
   }
 
   public constructor(props: IHashLipsNftGeneratorProps) {
