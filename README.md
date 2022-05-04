@@ -1,6 +1,13 @@
 # ez-nft
 
+[![npm](https://img.shields.io/npm/dm/ez-nft.svg?maxAge=600)](https://www.npmjs.com/package/ez-nft)
+[![npm](https://img.shields.io/npm/l/ez-nft.svg?maxAge=600)](https://github.com/noodleofdeath/ez-nft/blob/main/LICENSE)
+
+---
+
 Yet another library for generating NFT artwork, uploading NFT assets and metadata to IPFS, deploying NFT smart contracts, and minting NFT collections
+
+---
 
 ## Table of Contents
 
