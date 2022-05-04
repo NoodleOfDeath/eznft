@@ -146,8 +146,8 @@ or tweet me on Twitter at [@nftofdeath](https://twitter.com/nftofdeath)
 
 If you find this library useful for you, you can support it by donating any amount
 
-ETH/MATIC: 0x9FE2e80A2fEFE9d38C4689daB25e37f413C68C43
+`ETH/MATIC: 0x9FE2e80A2fEFE9d38C4689daB25e37f413C68C43`
 
-BTC: 3HNXnygb1HowTBbvhQrQ4vxekfQ2UM83sd
+`BTC: 3HNXnygb1HowTBbvhQrQ4vxekfQ2UM83sd`
 
-SHIB: 0xBb8f7EbF3D7f54BAcadece3dada9ab2358C90635
+`SHIB: 0xBb8f7EbF3D7f54BAcadece3dada9ab2358C90635`
