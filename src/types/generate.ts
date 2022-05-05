@@ -1,3 +1,5 @@
+import { ILoggableServiceProps } from './service';
+
 export interface INftLayerOptions {
   blend?: string;
   opacity?: number;
@@ -13,7 +15,7 @@ export interface INftLayersPackage {
   layers: INftLayer[];
 }
 
-export interface INftGeneratorProps {
+export interface INftGeneratorProps extends ILoggableServiceProps {
   size: number;
   layers: string;
   output: string;
@@ -24,4 +26,8 @@ export interface INftGenerator {
   readonly layers: string;
   readonly output: string;
   generate(): Promise<void>;
+}
+
+export enum ENftGeneratorService {
+  HashLips = 'hashlips',
 }

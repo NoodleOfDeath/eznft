@@ -1,10 +1,10 @@
 import { ELogLevel, ILoggableService, ILoggableServiceProps, LogLevelName } from '../types';
 
-export abstract class ABaseLoggableService<T extends ILoggableServiceProps> implements ILoggableService {
+export abstract class ABaseLoggableService implements ILoggableService {
   public readonly logLevel: ELogLevel;
 
-  public constructor(props: T) {
-    this.logLevel = props.logLevel;
+  public constructor({ logLevel }: ILoggableServiceProps) {
+    this.logLevel = logLevel;
   }
 
   protected LOG(level: ELogLevel, message: string): void {

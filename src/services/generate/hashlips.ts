@@ -3,27 +3,14 @@ import * as os from 'os';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { download, extract } from 'gitly';
-import { ILoggableServiceProps, INftGenerator, INftGeneratorProps } from '../../types';
-import { ABaseLoggableService } from '../service';
+import { INftGenerator } from '../../types';
+import { ABaseNftGenerator } from './generator';
 
-export interface IHashLipsNftGeneratorProps extends INftGeneratorProps, ILoggableServiceProps {}
-
-export class HashLipsNftGenerator extends ABaseLoggableService<IHashLipsNftGeneratorProps> implements INftGenerator {
-  public readonly size: number;
-  public readonly layers: string;
-  public readonly output: string;
-
+export class HashLipsNftGenerator extends ABaseNftGenerator implements INftGenerator {
   private readonly repo = 'HashLips/hashlips_art_engine#v1.1.2_patch_v6';
 
   private get repoDest(): string {
     return path.join(os.tmpdir(), `eznft-${new Date().valueOf()}`);
-  }
-
-  public constructor(props: IHashLipsNftGeneratorProps) {
-    super(props);
-    this.size = props.size;
-    this.layers = path.resolve(props.layers);
-    this.output = path.resolve(props.output);
   }
 
   public generate(): Promise<void> {

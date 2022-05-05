@@ -25,6 +25,11 @@ export function IpfsAssetCreate(props: IIpfsAssetProps): IIpfsAsset {
 
 export interface INft extends IIpfsAsset {}
 
-export interface IIpfsUploadService<Asset extends IIpfsAsset, Response> {
-  upload(asset: Asset): Promise<Response>;
+export enum EIpfsUploadService {
+  Pinata = 'pinata',
+}
+
+export interface IUploadService<Asset extends IIpfsAsset> {
+  upload(asset: Asset): Promise<any[]>;
+  uploadAll(source: string): Promise<any[]>;
 }

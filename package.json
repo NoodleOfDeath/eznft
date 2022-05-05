@@ -2,8 +2,11 @@
   "name": "eznft",
   "description": "Yet another library for generating NFT artwork, uploading NFT assets and metadata to IPFS, deploying NFT smart contracts, and minting NFT collections",
   "version": "0.0.3-rebrand",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "index.js",
+  "bin": {
+    "eznft": "dist/eznft.js"
+  },
+  "types": "index.d.ts",
   "files": [
     "dist"
   ],
@@ -37,18 +40,18 @@
   },
   "dependencies": {
     "@pinata/sdk": "^1.1.25",
+    "dotenv": "^16.0.0",
     "ethers": "^5.6.5",
     "fs-extra": "^10.1.0",
-    "gitly": "^2.1.6"
+    "gitly": "^2.1.6",
+    "hardhat": "^2.9.3"
   },
   "devDependencies": {
-    "@types/ansi-colors": "^3.2.2",
     "@types/argparse": "^2.0.10",
     "@types/fs-extra": "^9.0.13",
     "@types/node": "^14.18.16",
-    "ansi-colors": "^4.1.1",
     "argparse": "^2.0.1",
-    "dotenv": "^16.0.0",
+    "chalk": "^4.1.2",
     "husky": "^1.3.1",
     "inquirer": "^1.1.2",
     "json-ts": "^1.6.4",

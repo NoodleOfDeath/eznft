@@ -26,13 +26,11 @@ Yet another library for generating NFT artwork, uploading NFT assets and metadat
 ### CLI Tool
 
 ```bash
-$ git clone https://github.com/noodleofdeath/eznft
-$ cd eznft
-$ npm install
-$ ./eznft.ts
-usage: eznft.ts [-h] [-v] {deploy,d,dep,generate,g,gen,mint,m,upload,u,up} ...
+$ npm install eznft
+$ eznft
+usage: eznft [-h] [-v] {deploy,d,dep,generate,g,gen,mint,m,upload,u,up} ...
 
-eznft.ts v0.0.1
+eznft v0.0.3-rebrand
 Yet another library for generating NFT artwork, uploading NFT assets and metadata to IPFS, deploying NFT smart contracts, and minting NFT collections
 
 positional arguments:
@@ -52,7 +50,7 @@ optional arguments:
 Generate 10 unique pieces of artwork using the [HashLips Art Engine](https://github.com/HashLips/hashlips_art_engine).
 
 ```bash
-$ ./eznft.ts gen --layers ~/my-nft-project/layers --output ~/my-nft-project/output --size 10 --very-verbose
+$ eznft gen --layers ~/my-nft-project/layers --output ~/my-nft-project/output --size 10 --very-verbose
 INFO: downloaded archive to /Users/tmorgan/.gitly/github/HashLips/hashlips_art_engine/v1.1.2_patch_v6.tar.gz
 INFO: Copied repo to: /var/folders/k5/p95sjcmx26z4yz53frn6fskr0000gp/T/eznft-0.0.1-1651622515498
 INFO: Overwriting layers directory
@@ -81,7 +79,7 @@ Generate API keys for Pinata [here](https://app.pinata.cloud/keys) then
 add `PINATA_API_KEY` and `PINATA_SECRET_API_KEY` to your `.env` file. See [.env-example](.env-example).
 
 ```bash
-$ ./eznft.ts upload --source ~/my-nft-project/output --very-verbose
+$ eznft upload --source ~/my-nft-project/output --very-verbose
 INFO: Loading pinata client
 ...
 Uploaded NFT to ipfs://QmY8MgWHANEXhCN3cit7XTYBFnWKU5Uqbgmto9dJg1knC4
