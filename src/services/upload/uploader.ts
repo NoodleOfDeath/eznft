@@ -51,7 +51,7 @@ export abstract class ABaseUploadService extends ABaseLoggableService implements
         maxConcurrent: 1,
         minTime: 1000 / (this.rate / 60 / 2),
       });
-      async function runSchedule(): Promise<IIpfsHash[]> {
+      const runSchedule = async (): Promise<IIpfsHash[]> => {
         return Promise.all(
           files.map(async file => {
             return limiter
@@ -74,7 +74,7 @@ export abstract class ABaseUploadService extends ABaseLoggableService implements
               });
           }),
         );
-      }
+      };
       const hashes = await runSchedule();
       const outputDest = output || path.join(os.tmpdir(), 'hashes.json');
       fs.writeFileSync(outputDest, JSON.stringify({ hashes }, null, 2));
