@@ -112,12 +112,13 @@ npm i eznft
 Generate 10 unique pieces of artwork using the [HashLips Art Engine](https://github.com/HashLips/hashlips_art_engine).
 
 ```typescript
-import { HashLipsNftGenerator } from 'eznft';
-const generatorService = new HashLipsNftGenerator({
+import { ENftGeneratorService, NftGeneratorProvider } from "eznft";
+const generatorService = new NftGeneratorProvider({
+  type: ENftGeneratorService.HashLips,
   size: 10,
   layers: '~/my-nft-project/layers',
   output: '~/my-nft-project/output',
-  logLevel: 7, // ELogLevel.VERBOSE
+  logLevel: 7, // ELogLevel.VERBOSE,
 });
 generatorService.generate();
 ```
@@ -128,8 +129,13 @@ Generate API keys for Pinata [here](https://app.pinata.cloud/keys) then
 add `PINATA_API_KEY` and `PINATA_SECRET_API_KEY` to your `.env` file. See [.env-example](.env-example).
 
 ```typescript
-import { PinataUploadService } from 'eznft';
-const uploadService = new PinataUploadService(logLevel: 7); // VERBOSE
+import { EIpfsUploadService, UploadServiceProvider } from 'eznft';
+const uploadService = new UploadServiceProvider({
+  type: EIpfsUploadService.Pinata,
+  logLevel: 7,
+  apiKey: process.env.PINATA_API_KEY,
+  secretApiKey: process.env.PINATA_SECRET_API_KEY,
+}); // VERBOSE
 uploadService.uploadAll('~/my-nft-project/output');
 ```
 
