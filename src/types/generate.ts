@@ -19,6 +19,8 @@ export interface INftGeneratorProps extends ILoggableServiceProps {
   size: number;
   layers: string;
   output: string;
+  collection: string;
+  description: string;
 }
 
 export interface INftGenerator {

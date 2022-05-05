@@ -78,6 +78,14 @@ export default class CLI {
       help: 'size of the collection to generate',
       required: true,
     });
+    generateParser.add_argument('-c', '--collection', {
+      help: 'name of the collection',
+      required: true,
+    });
+    generateParser.add_argument('-d', '--description', {
+      help: 'description of the collection',
+      required: true,
+    });
     addCommonArgs(generateParser);
 
     const mintParser = subparsers.add_parser('mint', { aliases: ['m'], help: 'mint an NFT asset' });
@@ -124,12 +132,16 @@ export default class CLI {
       const size = args.size as number;
       const layers = args.layers as string;
       const output = args.output as string;
+      const collection = args.collection as string;
+      const description = args.description as string;
       const generatorService = new NftGeneratorProvider({
         type: engine,
-        size: size,
-        layers: layers,
-        output: output,
-        logLevel: logLevel,
+        size,
+        layers,
+        output,
+        logLevel,
+        collection,
+        description,
       });
       generatorService.generate();
     } else if (/^m(int)?$/i.test(command)) {
@@ -141,9 +153,9 @@ export default class CLI {
       const secretApiKey = process.env[`${ipfs.toUpperCase()}_SECRET_API_KEY`] || args.secret_api_key;
       const uploadService = new UploadServiceProvider({
         type: ipfs,
-        apiKey: apiKey,
-        secretApiKey: secretApiKey,
-        logLevel: logLevel,
+        apiKey,
+        secretApiKey,
+        logLevel,
       });
       uploadService.uploadAll(source);
     } else {

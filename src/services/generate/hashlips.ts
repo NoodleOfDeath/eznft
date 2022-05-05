@@ -26,17 +26,20 @@ export class HashLipsNftGenerator extends ABaseNftGenerator implements INftGener
           fs.copySync(this.layers, path.join(dest, 'layers'));
           this.INFO(`Updating project config`);
           let config = fs.readFileSync(path.join(dest, 'src', 'config.js'), { encoding: 'utf8' });
-          config = config.replace(
-            /const layerConfigurations[\s\S]*?];/i,
-            `const layerConfigurations = [${JSON.stringify(
-              {
-                growEditionSizeTo: this.size,
-                layersOrder: layers.map(layer => ({ name: layer })),
-              },
-              null,
-              2,
-            )}];`,
-          );
+          config = config
+            .replace(/const namePrefix .*?";/i, `const namePrefix = "${this.collection}";`)
+            .replace(/const description .*?";/i, `const description = "${this.description}";`)
+            .replace(
+              /const layerConfigurations[\s\S]*?];/i,
+              `const layerConfigurations = [${JSON.stringify(
+                {
+                  growEditionSizeTo: this.size,
+                  layersOrder: layers.map(layer => ({ name: layer })),
+                },
+                null,
+                2,
+              )}];`,
+            );
           fs.writeFileSync(path.join(dest, 'src', 'config.js'), config);
           this.INFO(`Project config updated`);
           this.INFO(execSync('npm install && npm run build', { cwd: dest, encoding: 'utf8' }));
