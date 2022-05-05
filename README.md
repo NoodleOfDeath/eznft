@@ -26,7 +26,7 @@ Yet another library for generating NFT artwork, uploading NFT assets and metadat
 ### CLI Tool
 
 ```bash
-$ npm install eznft
+$ npm install --global eznft
 $ eznft
 usage: eznft [-h] [-v] {deploy,d,dep,generate,g,gen,mint,m,upload,u,up} ...
 
