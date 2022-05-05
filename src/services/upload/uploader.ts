@@ -28,7 +28,7 @@ export abstract class ABaseUploadService extends ABaseLoggableService implements
     super({ logLevel });
     this.apiKey = apiKey;
     this.secretApiKey = secretApiKey;
-    this.rate = rate || 150;
+    this.rate = rate || 100;
   }
 
   public abstract upload(asset: IIpfsAsset): Promise<IIpfsHash>;
@@ -53,7 +53,7 @@ export abstract class ABaseUploadService extends ABaseLoggableService implements
       });
       const runSchedule = async (): Promise<IIpfsHash[]> => {
         return Promise.all(
-          files.map(async file => {
+          files.map(async (file, i) => {
             return limiter
               .schedule(() => this.upload(IpfsAssetCreate({ filePath: path.join(sourcePath, 'images', file) })))
               .then(ipfsHash => {
@@ -66,8 +66,8 @@ export abstract class ABaseUploadService extends ABaseLoggableService implements
                   if (json.compiler) delete json.compiler;
                   fs.writeFileSync(path.join(sourcePath, 'json', jsonFile), JSON.stringify(json, null, 2));
                   this.upload(IpfsAssetCreate({ filePath: path.join(sourcePath, 'json', jsonFile) })).then(ipfsHash => {
-                    console.log(`Uploaded NFT to ipfs://${ipfsHash}`);
-                    console.log(`To mint with the CLI tool use "eznft mint ipfs://${ipfsHash}"`);
+                    console.log(`[${i + 1}/${files.length}] Uploaded NFT to ipfs://${ipfsHash}`);
+                    this.INFO(`To mint with the CLI tool use "eznft mint ipfs://${ipfsHash}"`);
                     _resolve(ipfsHash);
                   });
                 });
