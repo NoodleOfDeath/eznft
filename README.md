@@ -15,7 +15,7 @@ Yet another library for generating NFT artwork, uploading NFT assets and metadat
   - [CLI Tool](#cli-tool)
     - [Generate Artwork](#generate-artwork-cli)
     - [Upload to Pinata](#upload-to-pinata-cli)
-  - [NPM Package](#npm-package)
+  - [NPM Module](#npm-module)
     - [Generate Artwork](#generate-artwork-npm)
     - [Upload to Pinarta](#upload-to-pinata-npm)
 - [Contribute](#contribute)
@@ -49,6 +49,8 @@ optional arguments:
 
 Generate 10 unique pieces of artwork using the [HashLips Art Engine](https://github.com/HashLips/hashlips_art_engine).
 
+__Note:__ HashLips is the default generator if the `--engine` flag is not specified.
+
 ```bash
 $ eznft gen --layers ~/my-nft-project/layers --output ~/my-nft-project/output --size 10 --very-verbose
 INFO: downloaded archive to /Users/tmorgan/.gitly/github/HashLips/hashlips_art_engine/v1.1.2_patch_v6.tar.gz
@@ -78,6 +80,8 @@ DONE
 Generate API keys for Pinata [here](https://app.pinata.cloud/keys) then
 add `PINATA_API_KEY` and `PINATA_SECRET_API_KEY` to your `.env` file. See [.env-example](.env-example).
 
+__Note:__ Pinata is the default upload service if the `--ipfs` flag is not specified.
+
 ```bash
 $ eznft upload --source ~/my-nft-project/output --very-verbose
 INFO: Loading pinata client
@@ -101,7 +105,7 @@ To mint with the CLI tool use "eznft.ts mint ipfs://QmPCFFW3dBrLE3enqVcwZcDthV4u
 DONE
 ```
 
-### NPM Package
+### NPM Module
 
 ```bash
 npm i eznft
@@ -111,14 +115,16 @@ npm i eznft
 
 Generate 10 unique pieces of artwork using the [HashLips Art Engine](https://github.com/HashLips/hashlips_art_engine).
 
+__Note:__ HashLips is the default generator if the `type` option is not specified.
+
 ```typescript
-import { ENftGeneratorService, NftGeneratorProvider } from "eznft";
+import { NftGeneratorProvider } from "eznft";
 const generatorService = new NftGeneratorProvider({
-  type: ENftGeneratorService.HashLips,
+  type: "hashlips",
   size: 10,
   layers: '~/my-nft-project/layers',
   output: '~/my-nft-project/output',
-  logLevel: 7, // ELogLevel.VERBOSE,
+  logLevel: 7, // VERBOSE,
 });
 generatorService.generate();
 ```
@@ -128,14 +134,16 @@ generatorService.generate();
 Generate API keys for Pinata [here](https://app.pinata.cloud/keys) then
 add `PINATA_API_KEY` and `PINATA_SECRET_API_KEY` to your `.env` file. See [.env-example](.env-example).
 
+__Note:__ Pinata is the default upload service if the `type` option is not specified.
+
 ```typescript
-import { EIpfsUploadService, UploadServiceProvider } from 'eznft';
+import { UploadServiceProvider } from 'eznft';
 const uploadService = new UploadServiceProvider({
-  type: EIpfsUploadService.Pinata,
-  logLevel: 7,
+  type: "pinata",
   apiKey: process.env.PINATA_API_KEY,
   secretApiKey: process.env.PINATA_SECRET_API_KEY,
-}); // VERBOSE
+  logLevels: 7, // VERBOSE
+});
 uploadService.uploadAll('~/my-nft-project/output');
 ```
 
@@ -145,8 +153,6 @@ Feel free to make a pull request if you want to help me implement the rest of th
 or tweet me on Twitter at [@nftofdeath](https://twitter.com/nftofdeath)
 
 ## Support Us
-
-## Support us
 
 If you find this library useful for you, you can support it by donating any amount
 
