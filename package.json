@@ -1,12 +1,12 @@
 {
   "name": "eznft",
   "description": "Yet another library for generating NFT artwork, uploading NFT assets and metadata to IPFS, deploying NFT smart contracts, and minting NFT collections",
-  "version": "0.0.4-pre-release-patch",
+  "version": "0.0.5-pre-release-types-patch",
   "main": "index.js",
   "bin": {
     "eznft": "dist/eznft.js"
   },
-  "types": "index.d.ts",
+  "types": "types/index.d.ts",
   "files": [
     "dist"
   ],
