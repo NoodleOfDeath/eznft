@@ -72,13 +72,13 @@ Generate 10 unique pieces of artwork using the [HashLips Art Engine](https://git
 __Note:__ HashLips is the default generator if the `type` option is not specified.
 
 ```typescript
-import { NftGeneratorProvider } from "eznft";
-const generatorService = new NftGeneratorProvider({
-  type: "hashlips",
+import { GeneratorServiceProvider } from "eznft";
+const generatorService = new GeneratorServiceProvider({
   size: 10,
   layers: '~/my-nft-project/layers',
-  output: '~/my-nft-project/output',
-  logLevel: 7, // VERBOSE,
+  outputDir: '~/my-nft-project/output',
+  logLevel: "most", // VERBOSE = INFO | WARN | ERROR,
+  type: "hashlips",
 });
 generatorService.generate();
 ```
@@ -93,10 +93,10 @@ __Note:__ Pinata is the default upload service if the `type` option is not speci
 ```typescript
 import { UploadServiceProvider } from 'eznft';
 const uploadService = new UploadServiceProvider({
-  type: "pinata",
   apiKey: process.env.PINATA_API_KEY,
   secretApiKey: process.env.PINATA_SECRET_API_KEY,
-  logLevels: 7, // VERBOSE
+  logLevel: "most", // VERBOSE = INFO | WARN | ERROR,
+  type: "pinata",
 });
 uploadService.uploadAll('~/my-nft-project/output');
 ```

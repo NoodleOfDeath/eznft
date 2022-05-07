@@ -1,6 +1,7 @@
 .DS_Store
 .env
 .vscode/
+.eznft
 node_modules/
 dist/
 tests/

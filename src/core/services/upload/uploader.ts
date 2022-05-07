@@ -1,25 +1,20 @@
 import * as fs from 'fs-extra';
-import * as os from 'os';
 import * as path from 'path';
 import Bottleneck from 'bottleneck';
 import {
-  EIpfsUploadService,
+  UploadServiceType,
   IIpfsHash,
-  IIpfsAsset,
-  IpfsAssetCreate,
+  IAsset,
+  AssetCreate,
   IUploadService,
-  ILoggableServiceProps,
-} from '../../types';
-import { ABaseLoggableService } from '../service';
+  IUploadServiceProps,
+  IUploadServiceProviderProps,
+  EUploadServiceType,
+} from '../../../types';
+import { ABaseResumableService } from '../resumable';
 import { PinataUploadService } from './pin';
 
-export interface IUploadServiceProps extends ILoggableServiceProps {
-  apiKey: string;
-  secretApiKey: string;
-  rate?: number; // max requests per min. default should be 150.
-}
-
-export abstract class ABaseUploadService extends ABaseLoggableService implements IUploadService {
+export abstract class ABaseUploadService extends ABaseResumableService implements IUploadService {
   public readonly apiKey: string;
   public readonly secretApiKey: string;
   public readonly rate: number;
@@ -31,42 +26,45 @@ export abstract class ABaseUploadService extends ABaseLoggableService implements
     this.rate = rate || 100;
   }
 
-  public abstract upload(asset: IIpfsAsset): Promise<IIpfsHash>;
+  public abstract upload(asset: IAsset): Promise<IIpfsHash>;
 
-  public uploadAll(source: string, output?: string): Promise<IIpfsHash[]> {
+  public uploadAll(source: string): Promise<IIpfsHash[]> {
+    this.session = this.workspace.session();
     return new Promise<any>(async (resolve, reject) => {
       const sourcePath = path.resolve(source);
       if (!fs.existsSync(sourcePath)) {
-        reject(new Error(`Path "${sourcePath}" does not exists`));
+        this.ERROR(`Path "${sourcePath}" does not exists`, null, reject);
         return;
       } else if (!fs.existsSync(path.join(sourcePath, 'images'))) {
-        reject(new Error(`Source path "${sourcePath}" is missing an "images" directory.`));
+        this.ERROR(`Source path "${sourcePath}" is missing an "images" directory.`, null, reject);
         return;
       } else if (!fs.existsSync(path.join(sourcePath, 'json'))) {
-        reject(new Error(`Source path "${sourcePath}" is missing a "json" directory.`));
+        this.ERROR(`Source path "${sourcePath}" is missing a "json" directory.`, null, reject);
         return;
       }
       const files = fs.readdirSync(path.join(sourcePath, 'images'));
-      const limiter = new Bottleneck({
+      const scheduler = new Bottleneck({
         maxConcurrent: 1,
         minTime: 1000 / (this.rate / 60 / 2),
       });
       const runSchedule = async (): Promise<IIpfsHash[]> => {
         return Promise.all(
           files.map(async (file, i) => {
-            return limiter
-              .schedule(() => this.upload(IpfsAssetCreate({ filePath: path.join(sourcePath, 'images', file) })))
+            return scheduler
+              .schedule(() => this.upload(AssetCreate({ filePath: path.join(sourcePath, 'images', file) })))
               .then(ipfsHash => {
                 return new Promise<IIpfsHash>(_resolve => {
                   const matches = /\w+(?=\.)/.exec(file);
-                  if (!matches || !matches[0]) return;
+                  if (!matches || !matches[0]) {
+                    return;
+                  }
                   const jsonFile = `${matches[0]}.json`;
                   let json = JSON.parse(fs.readFileSync(path.join(sourcePath, 'json', jsonFile), { encoding: 'utf8' }));
                   json.image = `ipfs://${ipfsHash}`;
                   if (json.compiler) delete json.compiler;
                   fs.writeFileSync(path.join(sourcePath, 'json', jsonFile), JSON.stringify(json, null, 2));
-                  this.upload(IpfsAssetCreate({ filePath: path.join(sourcePath, 'json', jsonFile) })).then(ipfsHash => {
-                    console.log(`[${i + 1}/${files.length}] Uploaded NFT to ipfs://${ipfsHash}`);
+                  this.upload(AssetCreate({ filePath: path.join(sourcePath, 'json', jsonFile) })).then(ipfsHash => {
+                    this.LOG(`[${i + 1}/${files.length}] Uploaded NFT to ipfs://${ipfsHash}`);
                     this.INFO(`To mint with the CLI tool use "eznft mint ipfs://${ipfsHash}"`);
                     _resolve(ipfsHash);
                   });
@@ -76,38 +74,44 @@ export abstract class ABaseUploadService extends ABaseLoggableService implements
         );
       };
       const hashes = await runSchedule();
-      const outputDest = output || path.join(os.tmpdir(), 'hashes.json');
+      const outputDest = path.join(this.sessionDir, 'hashes.json');
       fs.writeFileSync(outputDest, JSON.stringify({ hashes }, null, 2));
-      console.log(`Uploaded ${hashes.length} of ${files.length} assets and saved hashes to "${outputDest}"`);
-      console.log('DONE');
+      this.LOG(`Uploaded ${hashes.length} of ${files.length} assets and saved hashes to "${outputDest}"`);
+      this.LOG('DONE');
       resolve(hashes);
     });
   }
-}
 
-export interface IUploadServiceProviderProps extends IUploadServiceProps {
-  type?: EIpfsUploadService | string;
+  abstract resume(): void;
 }
 
 export class UploadServiceProvider extends ABaseUploadService {
-  private type: EIpfsUploadService | string;
+  public get serviceName(): string {
+    return this.service.serviceName;
+  }
+
+  private type: UploadServiceType | string;
   private service: IUploadService;
 
   public constructor({ logLevel, apiKey, secretApiKey, rate, type }: IUploadServiceProviderProps) {
     super({ logLevel, apiKey, secretApiKey, rate });
-    this.type = type || EIpfsUploadService.Pinata;
+    this.type = type || EUploadServiceType.PINATA;
     switch (this.type) {
-      case EIpfsUploadService.Pinata:
+      case EUploadServiceType.PINATA:
       default:
         this.service = new PinataUploadService({ ...this });
     }
   }
 
-  public upload(asset: IIpfsAsset): Promise<IIpfsHash> {
+  public upload(asset: IAsset): Promise<IIpfsHash> {
     return this.service.upload(asset);
   }
 
-  public uploadAll(source: string, output?: string): Promise<IIpfsHash[]> {
-    return this.service.uploadAll(source, output);
+  public uploadAll(source: string): Promise<IIpfsHash[]> {
+    return this.service.uploadAll(source);
+  }
+
+  public resume(): void {
+    this.service.resume();
   }
 }

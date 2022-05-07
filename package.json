@@ -4,16 +4,16 @@
   "version": "0.0.10-2",
   "main": "dist/index.js",
   "export": "dist/index.js",
+  "types": "dist/index.d.ts",
   "bin": {
     "eznft": "dist/eznft.js"
   },
-  "types": "dist/index.d.ts",
   "files": [
     "dist"
   ],
   "license": "MIT",
   "engines": {
-    "node": ">=8.0.0"
+    "node": ">=14.0.0"
   },
   "bugs": {
     "url": "https://github.com/noodleofdeath/eznft/issues",

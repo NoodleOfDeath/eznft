@@ -1,4 +1,4 @@
-import { IDeployContractService } from '../../types';
+import { IDeployContractService } from '../../../types';
 import { ethers } from 'ethers';
 
 export class NFTDeployContractService implements IDeployContractService {

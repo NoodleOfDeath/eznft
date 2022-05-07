@@ -1,10 +1,12 @@
 import PinataSDK, { PinataClient } from '@pinata/sdk';
-import { IIpfsAsset, IIpfsHash } from '../../types';
-import { ABaseUploadService, IUploadServiceProps } from './uploader';
+import { IAsset, IIpfsHash, IUploadServiceProps } from '../../../types';
+import { ABaseUploadService } from './uploader';
 
 export interface IPinataUploadServiceProps extends IUploadServiceProps {}
 
 export class PinataUploadService extends ABaseUploadService {
+  public readonly serviceName = PinataUploadService.name;
+
   private client: PinataClient;
 
   public constructor({ logLevel, apiKey, secretApiKey }: IPinataUploadServiceProps) {
@@ -12,7 +14,7 @@ export class PinataUploadService extends ABaseUploadService {
     this.client = PinataSDK(this.apiKey, this.secretApiKey);
   }
 
-  public upload(asset: IIpfsAsset): Promise<IIpfsHash> {
+  public upload(asset: IAsset): Promise<IIpfsHash> {
     this.INFO(`Uploading asset: ${Object.entries(asset).map(entry => `(${entry[0]}, ${entry[1]})`)}`);
     return new Promise<any>((resolve, reject) => {
       this.client
@@ -26,9 +28,11 @@ export class PinataUploadService extends ABaseUploadService {
           );
           resolve(result.IpfsHash);
         })
-        .catch((error: Error) => reject(error));
+        .catch((error: Error) => this.ERROR(error, null, reject));
     });
   }
+
+  public resume(): void {}
 
   public testAuthentication() {
     this.INFO(`Authenticating client`);
