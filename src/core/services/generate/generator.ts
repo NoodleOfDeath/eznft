@@ -1,22 +1,41 @@
 import * as path from 'path';
-import { EGeneratorServiceType, GeneratorServiceType, IGeneratorService, IGeneratorServiceProps } from '../../../types';
+import {
+  EGeneratorServiceType,
+  GeneratorServiceType,
+  IGeneratorService,
+  IGeneratorServiceProps,
+  ILayerOptions,
+} from '../../../types';
 import { ABaseResumableService } from '../resumable';
 import { HashLipsGeneratorService } from './hashlips';
 
 export abstract class ABaseGeneratorService extends ABaseResumableService implements IGeneratorService {
   public size: number;
   public layers: string;
+  public layerOrder: string[];
+  public layerOptions: Map<string, ILayerOptions>;
   public prefix?: string;
   public description?: string;
   public outputDir?: string;
 
-  public constructor({ logLevel, size, layers, prefix, description, outputDir: output }: IGeneratorServiceProps) {
+  public constructor({
+    logLevel,
+    size,
+    layers,
+    layerOrder,
+    layerOptions,
+    prefix,
+    description,
+    outputDir,
+  }: IGeneratorServiceProps) {
     super({ logLevel });
     this.size = size;
     this.layers = path.resolve(layers);
+    this.layerOrder = layerOrder ?? [];
+    this.layerOptions = layerOptions;
     this.prefix = prefix;
     this.description = description;
-    if (output) this.outputDir = path.resolve(output);
+    if (outputDir) this.outputDir = path.resolve(outputDir);
   }
 
   public abstract generate(): Promise<void>;
@@ -39,12 +58,14 @@ export class GeneratorServiceProvider extends ABaseGeneratorService {
     logLevel,
     size,
     layers,
-    outputDir: output,
+    layerOrder,
+    layerOptions,
+    outputDir,
     prefix,
     description,
     type,
   }: IGeneratorServiceProviderProps) {
-    super({ logLevel, size, layers, outputDir: output, prefix: prefix, description });
+    super({ logLevel, size, layers, layerOrder, layerOptions, outputDir, prefix: prefix, description });
     this.type = type || EGeneratorServiceType.HASHLIPS;
     switch (this.type) {
       case EGeneratorServiceType.HASHLIPS:

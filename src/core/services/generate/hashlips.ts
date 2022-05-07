@@ -2,8 +2,15 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import { execSync } from 'child_process';
 import { download, extract } from 'gitly';
-import { ELogLevel, IGeneratorService } from '../../../types';
+import { ELogLevel, IGeneratorService, ILayerOptions } from '../../../types';
 import { ABaseGeneratorService } from './generator';
+
+export interface IHashLipsGeneratorServiceLayerOptions extends ILayerOptions {
+  bypassDNA?: boolean;
+  blend?: string;
+  opacity?: number;
+  displayName?: string;
+}
 
 export class HashLipsGeneratorService extends ABaseGeneratorService implements IGeneratorService {
   public readonly serviceName = HashLipsGeneratorService.name;
@@ -24,9 +31,16 @@ export class HashLipsGeneratorService extends ABaseGeneratorService implements I
         .then(dest => {
           this.INFO(`Copied repo to: ${dest}`);
           this.INFO(`Overwriting layers directory`);
+          this.DEBUG(`Ignoring layer directories that begin with a period and/or contain no files.`);
           const layers = fs
             .readdirSync(this.layers)
             .filter(layer => !/^\./.test(layer) && fs.readdirSync(path.join(this.layers, layer)).length > 0);
+          const layerMap = [...layers]
+            .sort((a, b) => this.layerOrder.indexOf(b) - this.layerOrder.indexOf(a))
+            .map(layer => {
+              return { name: layer, options: this.layerOptions.get(layer) ?? {} };
+            });
+          this.DEBUG(`Generated sorted layer map: ${layerMap.map(entry => `${entry.name}`).join(', ')}`);
           fs.removeSync(path.join(dest, 'layers'));
           fs.copySync(this.layers, path.join(dest, 'layers'));
           this.INFO(`Updating project config`);
@@ -39,7 +53,7 @@ export class HashLipsGeneratorService extends ABaseGeneratorService implements I
               `const layerConfigurations = [${JSON.stringify(
                 {
                   growEditionSizeTo: this.size,
-                  layersOrder: layers.map(layer => ({ name: layer })),
+                  layersOrder: layerMap,
                 },
                 null,
                 2,

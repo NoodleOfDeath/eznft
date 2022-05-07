@@ -5,11 +5,17 @@ import * as dotenv from 'dotenv';
 import chalk from 'chalk';
 import * as path from 'path';
 import { ArgumentParser, RawDescriptionHelpFormatter } from 'argparse';
-import { version, description } from './package.json';
-import { ELogLevel, GeneratorServiceProvider } from '.';
-import { UploadServiceProvider } from './core/services/upload/uploader';
-import { EGeneratorServiceType, EUploadServiceType, GeneratorServiceType, UploadServiceType } from './types';
-import { Project, Workspace } from './core';
+import { version, description } from '../package.json';
+import { ELogLevel, GeneratorServiceProvider } from '..';
+import { UploadServiceProvider } from '../core/services/upload/uploader';
+import {
+  EGeneratorServiceType,
+  EUploadServiceType,
+  GeneratorServiceType,
+  ILayerOptions,
+  UploadServiceType,
+} from '../types';
+import { Project, Workspace } from '../core';
 
 dotenv.config();
 
@@ -81,6 +87,14 @@ export default class CLI {
       type: 'int',
       help: 'size of the collection to generate',
       required: true,
+    });
+    generateParser.add_argument('--order', {
+      help:
+        'order to stack layers with the bottom one listed first separated by commans (i.e. "background, body, eyes, glasses")',
+    });
+    generateParser.add_argument('--opt', {
+      help: 'specify options for each layer (i.e. --opt="Background/opacity:0.5,displayName:\\"Background Color\\"")',
+      nargs: '+',
     });
     generateParser.add_argument('-p', '--prefix', {
       default: 'No Prefix',
@@ -168,6 +182,19 @@ export default class CLI {
       const serviceType = args.engine as GeneratorServiceType;
       const size = args.size as number;
       const layers = args.layers as string;
+      const layerOrder = ((args.order as string) || '').split(/\s*,\s*/g).reverse();
+      const layerOptions = new Map<string, ILayerOptions>(
+        ((args.opt || []) as string[]).map((option: string) => {
+          const [key, value] = option.split('/');
+          try {
+            const parsedKeys = value.replace(/(\w+)(?=:)/g, ($0, $1) => `"${$1}"`);
+            console.log(parsedKeys);
+            return [key, JSON.parse(/^\{\S*\}/.test(parsedKeys) ? parsedKeys : `{${parsedKeys}}`)];
+          } catch (e) {
+            return [key, {}];
+          }
+        }),
+      );
       const prefix = args.prefix as string;
       const description = args.description as string;
       const outputDir = args.outputDir as string;
@@ -175,6 +202,8 @@ export default class CLI {
         logLevel,
         size,
         layers,
+        layerOrder,
+        layerOptions,
         prefix,
         description,
         outputDir,

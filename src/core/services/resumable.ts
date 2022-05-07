@@ -19,7 +19,7 @@ export abstract class ABaseResumableService extends ABaseLoggableService impleme
 
   public constructor({ logLevel, workspace, workingDirectory }: IResumableServiceProps & ILoggableProps) {
     super({ logLevel });
-    this.workspace = workspace || new Workspace({ workingDirectory });
+    this.workspace = workspace ?? new Workspace({ workingDirectory });
   }
 
   public abstract resume(): void;

@@ -6,7 +6,7 @@
   "export": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "eznft": "dist/eznft.js"
+    "eznft": "dist/cli/eznft.js"
   },
   "files": [
     "dist"

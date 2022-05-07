@@ -40,7 +40,7 @@ export class Session extends ABaseLoggable implements ISession {
 
   public constructor({ logLevel, workspace, sessionNonce }: ISessionProps) {
     super({ logLevel });
-    this.workspace = workspace || new Workspace({});
+    this.workspace = workspace ?? new Workspace({});
     this.sessionNonce = sessionNonce || `${Date.now()}`;
   }
 }
