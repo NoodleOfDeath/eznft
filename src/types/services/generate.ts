@@ -11,18 +11,19 @@ export interface IGeneratorService extends IResumableService {
   readonly size: number;
   readonly layers: string;
   readonly layerOrder: string[];
-  readonly layerOptions: Map<string, ILayerOptions>;
+  readonly layerOptions: Record<string, ILayerOptions>;
   readonly prefix?: string;
   readonly description?: string;
   readonly outputDir?: string;
   generate(): Promise<void>;
 }
 
+export type GeneratorServiceLayerOptionsType = string | string[] | Record<string, ILayerOptions>;
 export interface IGeneratorServiceProps extends IResumableServiceProps {
   size: number;
   layers: string;
   layerOrder?: string[];
-  layerOptions?: Map<string, ILayerOptions>;
+  layerOptions?: GeneratorServiceLayerOptionsType;
   prefix?: string;
   description?: string;
   outputDir?: string;

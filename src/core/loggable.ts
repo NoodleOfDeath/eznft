@@ -13,22 +13,22 @@ export abstract class ABaseLoggable implements ILoggable {
   public abstract readonly logIdentifier: string;
 
   public constructor({ logLevel }: ILoggableProps) {
-    this.logLevel = typeof logLevel === 'string' ? LogLevelMask(logLevel) : logLevel;
+    this.logLevel = typeof logLevel === 'string' ? LogLevelMask(logLevel) : logLevel ? logLevel : ELogLevel.LOG;
   }
 
   protected formatted(level: ELogLevel, message: string, options?: ILoggableFormatOptions): string | null {
     if (this.logLevel && this.logLevel & level) {
       const colors = LogLevelColors(level);
-      const logTagColors = colors.logTag ?? ((text: string) => text);
+      const logTagColors = colors.logTag || ((text: string) => text);
       const logTagBlock = !(this.logLevel <= ELogLevel.LOG)
         ? logTagColors(`${LogLevelName(level).toUpperCase()} `.padStart(7, ' ')) + ' '
         : '';
-      const sourceTagColors = colors.sourceTag ?? colors.text ?? ((text: string) => text);
+      const sourceTagColors = colors.sourceTag || colors.text || ((text: string) => text);
       const sourceBlock =
         this.logLevel & ELogLevel.DEBUG
           ? sourceTagColors(`[${this.logIdentifier} ${new Date().toLocaleTimeString()}]:`) + ' '
           : '';
-      const messageBlockColors = (options?.piped ? colors.piped : colors.text) ?? ((text: string) => text);
+      const messageBlockColors = (options?.piped ? colors.piped : colors.text) || ((text: string) => text);
       const messageBlock = messageBlockColors(message);
       return `${logTagBlock}${sourceBlock}${messageBlock}`;
     }

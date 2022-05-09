@@ -29,7 +29,6 @@ export function AssetCreate({ filePath, metadataPath }: IAssetProps): IAsset {
 export interface IUploadService extends IResumableService {
   readonly apiKey: string;
   readonly secretApiKey: string;
-  readonly rate: number;
   upload(asset: IAsset): Promise<IIpfsHash>;
   uploadAll(source: string): Promise<IIpfsHash[]>;
 }
@@ -37,7 +36,6 @@ export interface IUploadService extends IResumableService {
 export interface IUploadServiceProps extends IResumableServiceProps {
   apiKey: string;
   secretApiKey: string;
-  rate?: number; // max requests per min. default should be 150.
 }
 
 export enum EUploadServiceType {
@@ -46,5 +44,5 @@ export enum EUploadServiceType {
 export type UploadServiceType = keyof typeof EUploadServiceType;
 
 export interface IUploadServiceProviderProps extends IUploadServiceProps {
-  type?: UploadServiceType;
+  serviceName?: string;
 }

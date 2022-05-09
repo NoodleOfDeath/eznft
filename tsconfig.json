@@ -1,6 +1,6 @@
 {
   "compilerOptions": {
-    "lib": ["es7", "dom"],
+    "lib": ["es2019", "dom"],
     "declaration": true,
     "esModuleInterop": true,
     "module": "commonjs",
@@ -11,7 +11,7 @@
     "allowSyntheticDefaultImports": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "target": "ES2017",
+    "target": "es2019",
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",

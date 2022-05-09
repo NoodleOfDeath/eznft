@@ -13,7 +13,7 @@
   ],
   "license": "MIT",
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=8.0.0"
   },
   "bugs": {
     "url": "https://github.com/noodleofdeath/eznft/issues",
@@ -63,9 +63,11 @@
   },
   "dependencies": {
     "@pinata/sdk": "^1.1.25",
+    "@types/cli-progress": "^3.9.2",
     "argparse": "^2.0.1",
     "bottleneck": "^2.19.5",
     "chalk": "^4.1.2",
+    "cli-progress": "^3.11.0",
     "dotenv": "^16.0.0",
     "ethers": "^5.6.5",
     "fs-extra": "^10.1.0",

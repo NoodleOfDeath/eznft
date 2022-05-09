@@ -1,8 +1,6 @@
 import * as fs from 'fs-extra';
 import * as path from 'path';
-import Bottleneck from 'bottleneck';
 import {
-  UploadServiceType,
   IIpfsHash,
   IAsset,
   AssetCreate,
@@ -10,26 +8,95 @@ import {
   IUploadServiceProps,
   IUploadServiceProviderProps,
   EUploadServiceType,
+  ETaskStatus,
+  ITaskStatusChange,
+  ISessionProps,
+  ISessionSchedulerOptions,
+  EServiceType,
 } from '../../../types';
 import { ABaseResumableService } from '../resumable';
+import { ServiceSession, SessionTask } from '../session';
 import { PinataUploadService } from './pin';
 
 export abstract class ABaseUploadService extends ABaseResumableService implements IUploadService {
+  public readonly serviceType = EServiceType.UPLOAD_SERVICE;
+
+  public readonly schedulerOptions: ISessionSchedulerOptions;
   public readonly apiKey: string;
   public readonly secretApiKey: string;
-  public readonly rate: number;
 
-  public constructor({ logLevel, apiKey, secretApiKey, rate }: IUploadServiceProps) {
-    super({ logLevel });
+  public constructor({
+    logLevel,
+    workspace,
+    workingDirectory,
+    session,
+    sessionId,
+    schedulerOptions,
+    apiKey,
+    secretApiKey,
+  }: IUploadServiceProps) {
+    super({ logLevel, workspace, workingDirectory, session, sessionId, schedulerOptions });
     this.apiKey = apiKey;
     this.secretApiKey = secretApiKey;
-    this.rate = rate || 100;
   }
 
   public abstract upload(asset: IAsset): Promise<IIpfsHash>;
 
+  private makeSessionTask(sourcePath: string, file: string, index: number, total: number): SessionTask {
+    const newTask = new SessionTask({
+      id: file,
+      service: this,
+      session: this.session,
+      status: ETaskStatus.QUEUED,
+      payload: {
+        sourcePath,
+        file,
+      },
+      run: () => {
+        return new Promise<ITaskStatusChange>(async (resolve, reject) => {
+          await newTask.setStatus(ETaskStatus.RUNNING);
+          const matches = /\w+(?=\.)/.exec(file);
+          if (!matches || !matches[0]) {
+            this.ERROR(`Unknown parsing error occured parsing the filename: "${file}"`, null, reject);
+            return;
+          }
+          const jsonFile = `${matches[0]}.json`;
+          this.upload(AssetCreate({ filePath: path.join(sourcePath, 'images', file) })).then(async ipfsHash => {
+            await this.session.recordState();
+            let json = JSON.parse(fs.readFileSync(path.join(sourcePath, 'json', jsonFile), { encoding: 'utf8' }));
+            json.image = `ipfs://${ipfsHash}`;
+            if (json.compiler) delete json.compiler;
+            fs.writeFileSync(path.join(sourcePath, 'json', jsonFile), JSON.stringify(json, null, 2));
+            this.upload(AssetCreate({ filePath: path.join(sourcePath, 'json', jsonFile) }))
+              .then(async _ipfsHash => {
+                this.LOG(
+                  `[${`${index + 1}/${total}`.padStart(2 * Math.log(total) + 1, ' ')} - ${`${Math.round(
+                    ((index + 1) / total) * 100,
+                  )}`.padStart(3, ' ')}%] Uploaded JSON file for "${json.name}" to ipfs://${_ipfsHash}`,
+                );
+                this.INFO(`To mint with the CLI tool use "eznft mint ipfs://${_ipfsHash}"`);
+                await newTask.setStatus(ETaskStatus.SUCCESS);
+                resolve({
+                  status: ETaskStatus.SUCCESS,
+                  payload: _ipfsHash,
+                });
+              })
+              .catch(async (e: Error) => {
+                this.ERROR(`Failed to upload json file for "${file}"`);
+                await newTask.setStatus(ETaskStatus.FAILED);
+                resolve({
+                  status: ETaskStatus.FAILED,
+                  payload: e.message,
+                });
+              });
+          });
+        });
+      },
+    });
+    return newTask;
+  }
+
   public uploadAll(source: string): Promise<IIpfsHash[]> {
-    this.session = this.workspace.session();
     return new Promise<any>(async (resolve, reject) => {
       const sourcePath = path.resolve(source);
       if (!fs.existsSync(sourcePath)) {
@@ -43,75 +110,50 @@ export abstract class ABaseUploadService extends ABaseResumableService implement
         return;
       }
       const files = fs.readdirSync(path.join(sourcePath, 'images'));
-      const scheduler = new Bottleneck({
-        maxConcurrent: 1,
-        minTime: 1000 / (this.rate / 60 / 2),
+      this.session = this.generateSession();
+      this.start(files.map((file, i) => this.makeSessionTask(sourcePath, file, i, files.length))).then(statuses => {
+        return this.cleanup(statuses, resolve);
       });
-      const runSchedule = async (): Promise<IIpfsHash[]> => {
-        return Promise.all(
-          files.map(async (file, i) => {
-            return scheduler
-              .schedule(() => this.upload(AssetCreate({ filePath: path.join(sourcePath, 'images', file) })))
-              .then(ipfsHash => {
-                return new Promise<IIpfsHash>(_resolve => {
-                  const matches = /\w+(?=\.)/.exec(file);
-                  if (!matches || !matches[0]) {
-                    return;
-                  }
-                  const jsonFile = `${matches[0]}.json`;
-                  let json = JSON.parse(fs.readFileSync(path.join(sourcePath, 'json', jsonFile), { encoding: 'utf8' }));
-                  json.image = `ipfs://${ipfsHash}`;
-                  if (json.compiler) delete json.compiler;
-                  fs.writeFileSync(path.join(sourcePath, 'json', jsonFile), JSON.stringify(json, null, 2));
-                  this.upload(AssetCreate({ filePath: path.join(sourcePath, 'json', jsonFile) })).then(ipfsHash => {
-                    this.LOG(`[${i + 1}/${files.length}] Uploaded NFT to ipfs://${ipfsHash}`);
-                    this.INFO(`To mint with the CLI tool use "eznft mint ipfs://${ipfsHash}"`);
-                    _resolve(ipfsHash);
-                  });
-                });
-              });
-          }),
-        );
-      };
-      const hashes = await runSchedule();
-      const outputDest = path.join(this.sessionDir, 'hashes.json');
-      fs.writeFileSync(outputDest, JSON.stringify({ hashes }, null, 2));
-      this.LOG(`Uploaded ${hashes.length} of ${files.length} assets and saved hashes to "${outputDest}"`);
-      this.LOG('DONE');
-      resolve(hashes);
     });
   }
 
-  abstract resume(): void;
+  private cleanup(statuses: ITaskStatusChange[], resolve: (t: ITaskStatusChange[]) => void) {
+    this.session.archive();
+    const successes = statuses.filter(s => s.status === ETaskStatus.SUCCESS);
+    this.LOG(
+      `Uploaded ${successes.length} of ${statuses.length} assets and saved hashes to "${this.sessionDir}/session-state.json"`,
+    );
+    this.LOG('DONE');
+    this.stop();
+    resolve(statuses);
+  }
+
+  public resume(sessionProps: ISessionProps): Promise<ITaskStatusChange[]> {
+    return new Promise<ITaskStatusChange[]>(resolve => {
+      this.session = new ServiceSession(sessionProps);
+      const subtasks = (this.session.tasks || []).filter(task => task.status !== ETaskStatus.SUCCESS);
+      const tasks = subtasks.map((task, i) => {
+        if (!(task instanceof SessionTask)) {
+          const sourcePath = task.payload?.sourcePath;
+          const file = task.payload?.file;
+          if (!sourcePath || !file) {
+            this.ERROR('');
+          }
+          return this.makeSessionTask(sourcePath, file, i, subtasks.length);
+        }
+        return task;
+      });
+      return this.start(tasks).then(statuses => this.cleanup(statuses, resolve));
+    });
+  }
 }
 
-export class UploadServiceProvider extends ABaseUploadService {
-  public get serviceName(): string {
-    return this.service.serviceName;
-  }
-
-  private type: UploadServiceType | string;
-  private service: IUploadService;
-
-  public constructor({ logLevel, apiKey, secretApiKey, rate, type }: IUploadServiceProviderProps) {
-    super({ logLevel, apiKey, secretApiKey, rate });
-    this.type = type || EUploadServiceType.PINATA;
-    switch (this.type) {
+export abstract class UploadService {
+  public static load(props: IUploadServiceProviderProps) {
+    switch (props.serviceName) {
       case EUploadServiceType.PINATA:
       default:
-        this.service = new PinataUploadService({ ...this });
+        return new PinataUploadService(props);
     }
-  }
-
-  public upload(asset: IAsset): Promise<IIpfsHash> {
-    return this.service.upload(asset);
-  }
-
-  public uploadAll(source: string): Promise<IIpfsHash[]> {
-    return this.service.uploadAll(source);
-  }
-
-  public resume(): void {
-    this.service.resume();
   }
 }

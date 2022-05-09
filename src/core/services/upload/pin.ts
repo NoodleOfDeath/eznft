@@ -5,7 +5,7 @@ import { ABaseUploadService } from './uploader';
 export interface IPinataUploadServiceProps extends IUploadServiceProps {}
 
 export class PinataUploadService extends ABaseUploadService {
-  public readonly serviceName = PinataUploadService.name;
+  public readonly serviceName = 'PINATA';
 
   private client: PinataClient;
 
@@ -31,8 +31,6 @@ export class PinataUploadService extends ABaseUploadService {
         .catch((error: Error) => this.ERROR(error, null, reject));
     });
   }
-
-  public resume(): void {}
 
   public testAuthentication() {
     this.INFO(`Authenticating client`);

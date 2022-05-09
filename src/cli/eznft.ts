@@ -6,13 +6,14 @@ import chalk from 'chalk';
 import * as path from 'path';
 import { ArgumentParser, RawDescriptionHelpFormatter } from 'argparse';
 import { version, description } from '../package.json';
-import { ELogLevel, GeneratorServiceProvider } from '..';
-import { UploadServiceProvider } from '../core/services/upload/uploader';
+import { ELogLevel, GeneratorService } from '..';
+import { UploadService } from '../core/services/upload/uploader';
 import {
   EGeneratorServiceType,
+  EServiceType,
+  ETaskStatus,
   EUploadServiceType,
   GeneratorServiceType,
-  ILayerOptions,
   UploadServiceType,
 } from '../types';
 import { Project, Workspace } from '../core';
@@ -43,7 +44,7 @@ export default class CLI {
       });
     }
 
-    const __this = path.basename(__filename, '.js');
+    const __this = path.basename(__filename).replace(/\.[tj]s$/gi, '');
 
     class HelpFormatter extends RawDescriptionHelpFormatter {
       _split_lines(text: string) {
@@ -70,31 +71,38 @@ export default class CLI {
     const configParser = subparsers.add_parser('config', { help: 'list or set enzft configurations' });
     addCommonArgs(configParser);
 
+    const resumeParser = subparsers.add_parser('resume', { help: 'resume a session that was interrupted' });
+    resumeParser.add_argument('session', {
+      help: 'the session to attempt resuming. required if there are multiple sessions that can be resumed.',
+      nargs: '?',
+    });
+    addCommonArgs(resumeParser);
+
     subparsers.add_parser('clean', { help: 'cleans the current eznft workspace' });
 
     const generateParser = subparsers.add_parser('generate', { aliases: ['g', 'gen'], help: 'generate NFT artwork' });
+    generateParser.add_argument('layers', {
+      help: 'directory containing the layers to generate artwork from',
+    });
+    generateParser.add_argument('size', {
+      type: 'int',
+      help: 'size of the collection to generate',
+    });
     generateParser.add_argument('-e', '--engine', {
       choices: [EGeneratorServiceType.HASHLIPS],
       default: EGeneratorServiceType.HASHLIPS,
       help: 'engine to use for nft generation (default: %(default)s)',
       nargs: '?',
     });
-    generateParser.add_argument('-l', '--layers', {
-      help: 'directory containing the layers to generate artwork from',
-      required: true,
-    });
-    generateParser.add_argument('-s', '--size', {
-      type: 'int',
-      help: 'size of the collection to generate',
-      required: true,
-    });
     generateParser.add_argument('--order', {
       help:
         'order to stack layers with the bottom one listed first separated by commans (i.e. "background, body, eyes, glasses")',
     });
     generateParser.add_argument('--opt', {
-      help: 'specify options for each layer (i.e. --opt="Background/opacity:0.5,displayName:\\"Background Color\\"")',
-      nargs: '+',
+      help: `specify options for each layer (i.e. ${chalk.grey(
+        `--opt 'Background/opacity:0.5, displayName:"Background Color"' 'Fur/displayName: "Fur Color"'`,
+      )})`,
+      nargs: '*',
     });
     generateParser.add_argument('-p', '--prefix', {
       default: 'No Prefix',
@@ -112,19 +120,14 @@ export default class CLI {
     addCommonArgs(generateParser);
 
     const uploadParser = subparsers.add_parser('upload', { aliases: ['u', 'up'], help: 'upload an NFT asset to IPFS' });
-    uploadParser.add_argument('resume', {
-      help: 'resume a paused or interrupted upload session',
-      nargs: '?',
+    uploadParser.add_argument('source', {
+      help: 'source directory to upload NFT assets from',
     });
     uploadParser.add_argument('-i', '--ipfs', {
       choices: [EUploadServiceType.PINATA],
       default: EUploadServiceType.PINATA,
       help: 'ipfs service to upload nft assets to (default: %(default)s)',
       nargs: '?',
-    });
-    uploadParser.add_argument('-s', '--source', {
-      help: 'source directory to upload NFT assets from',
-      required: true,
     });
     uploadParser.add_argument('--api-key', {
       help: `ipfs api key (default: <IPFS>_API_KEY)`,
@@ -183,22 +186,11 @@ export default class CLI {
       const size = args.size as number;
       const layers = args.layers as string;
       const layerOrder = ((args.order as string) || '').split(/\s*,\s*/g).reverse();
-      const layerOptions = new Map<string, ILayerOptions>(
-        ((args.opt || []) as string[]).map((option: string) => {
-          const [key, value] = option.split('/');
-          try {
-            const parsedKeys = value.replace(/(\w+)(?=:)/g, ($0, $1) => `"${$1}"`);
-            console.log(parsedKeys);
-            return [key, JSON.parse(/^\{\S*\}/.test(parsedKeys) ? parsedKeys : `{${parsedKeys}}`)];
-          } catch (e) {
-            return [key, {}];
-          }
-        }),
-      );
+      const layerOptions = (args.opt || []) as string[];
       const prefix = args.prefix as string;
       const description = args.description as string;
       const outputDir = args.outputDir as string;
-      const generatorService = new GeneratorServiceProvider({
+      const generatorService = GeneratorService.load({
         logLevel,
         size,
         layers,
@@ -207,28 +199,71 @@ export default class CLI {
         prefix,
         description,
         outputDir,
-        type: serviceType,
+        serviceName: serviceType,
       });
       generatorService.generate();
-    } else if (/^d(ep|eploy)?$/i.test(command)) {
-      // DEPLOY
-      // TODO: - Deploy
-    } else if (/^m(int)?$/i.test(command)) {
-      // MINT
-      // TODO: - Mint
     } else if (/^u(p|pload)?$/i.test(command)) {
       // UPLOAD
       const serviceType = args.ipfs as UploadServiceType;
       const source = args.source as string;
       const apiKey = process.env[`${serviceType.toUpperCase()}_API_KEY`] || args.api_key;
       const secretApiKey = process.env[`${serviceType.toUpperCase()}_SECRET_API_KEY`] || args.secret_api_key;
-      const uploadService = new UploadServiceProvider({
+      const uploadService = UploadService.load({
         logLevel,
         apiKey,
         secretApiKey,
-        type: serviceType,
+        serviceName: serviceType,
       });
       uploadService.uploadAll(source);
+    } else if (/^d(ep|eploy)?$/i.test(command)) {
+      // DEPLOY
+      // TODO: - Deploy
+    } else if (/^m(int)?$/i.test(command)) {
+      // MINT
+      // TODO: - Mint
+    } else if (/^resume$/i.test(command)) {
+      let sessionIndex = args.session as number;
+      Workspace.default.getSessions().then(sessions => {
+        if (sessions.length === 0) {
+          console.log(`No sessions to resume`);
+        } else {
+          if (sessions.length === 1) {
+            sessionIndex = 0;
+          }
+          if (sessionIndex === null || sessionIndex === undefined) {
+            console.log(
+              [
+                '',
+                `multiple sessions exist that were interrupted.`,
+                `either specfiy a session below, or clean the workspace with "${__this} clean"`,
+                '',
+              ].join('\n'),
+            );
+            sessions.forEach((session, i) => {
+              const id = session.command?.splice(2).join(' ') || `${session.service}`;
+              const date = new Date(session.started).toLocaleDateString(undefined, {
+                hour: 'numeric',
+                minute: 'numeric',
+              });
+              const completedTasks = session.tasks?.filter(task => task.status === ETaskStatus.SUCCESS) || [];
+              const progress = `${completedTasks.length} out of ${session.tasks?.length || 0} tasks completed`;
+              console.log([`${i} - [${date}]`, `\t${__this} ${id}`, `\t${progress}`].join('\n'));
+            });
+          } else {
+            const session = sessions[sessionIndex];
+            if (session.service.serviceType === EServiceType.GENERATOR_SERVICE) {
+            } else if (session.service.serviceType === EServiceType.UPLOAD_SERVICE) {
+              const service = UploadService.load({
+                serviceName: session.service.serviceName,
+                apiKey: process.env[`${session.service.serviceName.toUpperCase()}_API_KEY`],
+                secretApiKey: process.env[`${session.service.serviceName.toUpperCase()}_SECRET_API_KEY`],
+              });
+              console.log(`Resuming session ${sessionIndex}`);
+              service.resume(session);
+            }
+          }
+        }
+      });
     } else {
       usage();
     }

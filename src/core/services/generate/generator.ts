@@ -1,7 +1,7 @@
 import * as path from 'path';
 import {
   EGeneratorServiceType,
-  GeneratorServiceType,
+  EServiceType,
   IGeneratorService,
   IGeneratorServiceProps,
   ILayerOptions,
@@ -10,10 +10,12 @@ import { ABaseResumableService } from '../resumable';
 import { HashLipsGeneratorService } from './hashlips';
 
 export abstract class ABaseGeneratorService extends ABaseResumableService implements IGeneratorService {
+  public readonly serviceType = EServiceType.GENERATOR_SERVICE;
+
   public size: number;
   public layers: string;
   public layerOrder: string[];
-  public layerOptions: Map<string, ILayerOptions>;
+  public layerOptions: Record<string, ILayerOptions>;
   public prefix?: string;
   public description?: string;
   public outputDir?: string;
@@ -31,54 +33,48 @@ export abstract class ABaseGeneratorService extends ABaseResumableService implem
     super({ logLevel });
     this.size = size;
     this.layers = path.resolve(layers);
-    this.layerOrder = layerOrder ?? [];
-    this.layerOptions = layerOptions;
+    this.layerOrder = layerOrder || [];
+    if (typeof layerOptions === 'string') {
+      try {
+        this.layerOptions = typeof layerOptions === 'string' ? JSON.parse(layerOptions) : {};
+      } catch (e) {
+        this.WARN('Layer options should be in a string or json format');
+      }
+    } else if (Array.isArray(layerOptions)) {
+      this.layerOptions = (() => {
+        const newOptions: typeof this.layerOptions = {};
+        layerOptions.forEach(option => {
+          const [key, value] = option.split('/');
+          try {
+            const parsedKeys = value.replace(/(\w+)(?=:)/g, ($0, $1) => `"${$1}"`);
+            newOptions[key] = JSON.parse(/^\{\S*\}/.test(parsedKeys) ? parsedKeys : `{${parsedKeys}}`);
+          } catch (e) {
+            newOptions[key] = {};
+          }
+        });
+        return newOptions;
+      })();
+    } else {
+      this.layerOptions = layerOptions;
+    }
     this.prefix = prefix;
     this.description = description;
     if (outputDir) this.outputDir = path.resolve(outputDir);
   }
 
   public abstract generate(): Promise<void>;
-  public abstract resume(): void;
 }
 
 export interface IGeneratorServiceProviderProps extends IGeneratorServiceProps {
-  type?: GeneratorServiceType;
+  serviceName?: string;
 }
 
-export class GeneratorServiceProvider extends ABaseGeneratorService {
-  public get serviceName(): string {
-    return this.service.serviceName;
-  }
-
-  private type: GeneratorServiceType | string;
-  private service: IGeneratorService;
-
-  public constructor({
-    logLevel,
-    size,
-    layers,
-    layerOrder,
-    layerOptions,
-    outputDir,
-    prefix,
-    description,
-    type,
-  }: IGeneratorServiceProviderProps) {
-    super({ logLevel, size, layers, layerOrder, layerOptions, outputDir, prefix: prefix, description });
-    this.type = type || EGeneratorServiceType.HASHLIPS;
-    switch (this.type) {
+export abstract class GeneratorService {
+  public static load(props: IGeneratorServiceProviderProps) {
+    switch (props.serviceName) {
       case EGeneratorServiceType.HASHLIPS:
       default:
-        this.service = new HashLipsGeneratorService({ ...this });
+        return new HashLipsGeneratorService(props);
     }
-  }
-
-  public generate(): Promise<void> {
-    return this.service.generate();
-  }
-
-  public resume(): void {
-    this.service.resume();
   }
 }

@@ -13,7 +13,7 @@ export interface IHashLipsGeneratorServiceLayerOptions extends ILayerOptions {
 }
 
 export class HashLipsGeneratorService extends ABaseGeneratorService implements IGeneratorService {
-  public readonly serviceName = HashLipsGeneratorService.name;
+  public readonly serviceName = 'HASHLIPS';
   private readonly repo = 'HashLips/hashlips_art_engine#v1.1.2_patch_v6';
 
   private get repoDir(): string {
@@ -25,40 +25,65 @@ export class HashLipsGeneratorService extends ABaseGeneratorService implements I
   }
 
   public generate(): Promise<void> {
-    this.session = this.workspace.session();
     return new Promise<void>((resolve, reject) => {
       this.downloadRepo(this.repoDir)
         .then(dest => {
           this.INFO(`Copied repo to: ${dest}`);
           this.INFO(`Overwriting layers directory`);
-          this.DEBUG(`Ignoring layer directories that begin with a period and/or contain no files.`);
-          const layers = fs
-            .readdirSync(this.layers)
-            .filter(layer => !/^\./.test(layer) && fs.readdirSync(path.join(this.layers, layer)).length > 0);
+          this.DEBUG(`Ignoring layer directories that contain no files.`);
+          const layers = fs.readdirSync(this.layers).filter(layer => {
+            const isDirectory = fs.lstatSync(path.join(this.layers, layer)).isDirectory();
+            if (!isDirectory) {
+              this.DEBUG(`Ignoring file "${layer}"`);
+              return false;
+            } else {
+              const isEmpty = fs.readdirSync(path.join(this.layers, layer)).length === 0;
+              const valid = isDirectory && !isEmpty;
+              if (!valid) this.DEBUG(`Ignoring empty layer directory "${layer}"`);
+              return valid;
+            }
+          });
+          Object.keys(this.layerOptions).forEach(option => {
+            if (!layers.includes(option)) {
+              this.WARN(
+                [
+                  `Specified options for a layer that does not appear to exist with the subdirectory name "${option}" in "${this.layers}"`,
+                  `But there does exist ${layers
+                    .filter(layer => new RegExp(option, 'ig').test(layer))
+                    .map(layer => `"${layer}"`)
+                    .join(', ')}`,
+                ].join('\n'.padEnd(9, ' ')),
+              );
+            }
+          });
           const layerMap = [...layers]
             .sort((a, b) => this.layerOrder.indexOf(b) - this.layerOrder.indexOf(a))
             .map(layer => {
-              return { name: layer, options: this.layerOptions.get(layer) ?? {} };
+              let options = this.layerOptions[layer];
+              if (!options) {
+                this.DEBUG(`Layer ${layer} has no options specified.`);
+                options = {};
+              }
+              return { name: layer, options: options };
             });
           this.DEBUG(`Generated sorted layer map: ${layerMap.map(entry => `${entry.name}`).join(', ')}`);
           fs.removeSync(path.join(dest, 'layers'));
           fs.copySync(this.layers, path.join(dest, 'layers'));
           this.INFO(`Updating project config`);
           let config = fs.readFileSync(path.join(dest, 'src', 'config.js'), { encoding: 'utf8' });
-          config = config
-            .replace(/const namePrefix .*?";/i, `const namePrefix = "${this.prefix}";`)
-            .replace(/const description .*?";/i, `const description = "${this.description}";`)
-            .replace(
-              /const layerConfigurations[\s\S]*?];/i,
-              `const layerConfigurations = [${JSON.stringify(
-                {
-                  growEditionSizeTo: this.size,
-                  layersOrder: layerMap,
-                },
-                null,
-                2,
-              )}];`,
-            );
+          this.DEBUG(`Updating name prefix to ${this.prefix}`);
+          config = config.replace(/const namePrefix .*?";/i, `const namePrefix = "${this.prefix}";`);
+          this.DEBUG(`Updating collection description to ${this.description}`);
+          config = config.replace(/const description .*?";/i, `const description = "${this.description}";`);
+          const layerConfig = {
+            growEditionSizeTo: this.size,
+            layersOrder: layerMap,
+          };
+          this.DEBUG(`Updating layer configurations to:\n${JSON.stringify(layerConfig, null, 2)}`);
+          config = config.replace(
+            /const layerConfigurations[\s\S]*?];/i,
+            `const layerConfigurations = [${JSON.stringify(layerConfig, null, 2)}];`,
+          );
           fs.writeFileSync(path.join(dest, 'src', 'config.js'), config);
           this.INFO(`Project config updated`);
           this.INFO(`Running NPM install`);
@@ -95,13 +120,12 @@ export class HashLipsGeneratorService extends ABaseGeneratorService implements I
             `Assets generated. To upload them to pinata with the CLI tool use "eznft upload --source ${this.buildDir}"`,
           );
           this.LOG('DONE');
+          this.stop();
           resolve();
         })
         .catch((error: Error) => this.ERROR(error, null, reject));
     });
   }
-
-  public resume(): void {}
 
   private downloadRepo(dest: string): Promise<string> {
     return new Promise<string>((resolve, reject) => {

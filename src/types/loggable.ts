@@ -1,5 +1,4 @@
 import chalk, { Chalk } from 'chalk';
-
 /**
  * Log level bitmask
  */
@@ -40,7 +39,7 @@ export interface ILogColors {
 
 export function LogLevelColors(level: ELogLevel): ILogColors {
   return {
-    [ELogLevel.DEBUG]: { logTag: chalk.black.bgGreenBright, text: chalk.greenBright, piped: chalk.gray },
+    [ELogLevel.DEBUG]: { logTag: chalk.black.bgGreen, text: chalk.green, piped: chalk.gray },
     [ELogLevel.LOG]: { logTag: chalk.black.bgWhite, text: chalk.white, piped: chalk.gray },
     [ELogLevel.INFO]: { logTag: chalk.black.bgWhiteBright, text: chalk.whiteBright, piped: chalk.gray },
     [ELogLevel.WARN]: { logTag: chalk.black.bgYellowBright, text: chalk.yellowBright, piped: chalk.gray },
@@ -51,8 +50,8 @@ export function LogLevelColors(level: ELogLevel): ILogColors {
 export interface ILoggable {
   readonly logLevel: ELogLevel;
   readonly logIdentifier: string;
-  LOG(message: string, options?: ILoggableFormatOptions): void;
   DEBUG(message: string, options?: ILoggableFormatOptions): void;
+  LOG(message: string, options?: ILoggableFormatOptions): void;
   INFO(message: string, options?: ILoggableFormatOptions): void;
   WARN(message: string, options?: ILoggableFormatOptions): void;
   ERROR(message: string | Error, options?: ILoggableFormatOptions, reject?: (reason?: any) => void): void;
