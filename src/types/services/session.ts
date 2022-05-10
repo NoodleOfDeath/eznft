@@ -11,7 +11,7 @@ export interface ITask {
   lastUpdate?: number;
   payload?: any;
   run: () => Promise<ITaskStatusChange>;
-  setStatus(status: ETaskStatus): Promise<boolean>;
+  update({ status, payload }: ITaskStatusChange): Promise<boolean>;
 }
 
 export interface ITaskProps {
@@ -54,7 +54,7 @@ export interface ISession {
 }
 
 export interface ISessionSchedulerOptions extends Bottleneck.ConstructorOptions {
-  rate?: number; // default is 150 requests per min
+  rate?: number; // default should be 100 requests per min
 }
 
 export interface ISessionProps extends ILoggableProps {

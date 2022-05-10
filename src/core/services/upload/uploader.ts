@@ -11,7 +11,6 @@ import {
   ETaskStatus,
   ITaskStatusChange,
   ISessionProps,
-  ISessionSchedulerOptions,
   EServiceType,
 } from '../../../types';
 import { ABaseResumableService } from '../resumable';
@@ -21,7 +20,6 @@ import { PinataUploadService } from './pin';
 export abstract class ABaseUploadService extends ABaseResumableService implements IUploadService {
   public readonly serviceType = EServiceType.UPLOAD_SERVICE;
 
-  public readonly schedulerOptions: ISessionSchedulerOptions;
   public readonly apiKey: string;
   public readonly secretApiKey: string;
 
@@ -35,7 +33,19 @@ export abstract class ABaseUploadService extends ABaseResumableService implement
     apiKey,
     secretApiKey,
   }: IUploadServiceProps) {
-    super({ logLevel, workspace, workingDirectory, session, sessionId, schedulerOptions });
+    // Divide the rate in half because each NFT is two API requests
+    let rate = schedulerOptions?.rate || 100 / 2;
+    if (rate > 100 / 2) {
+      schedulerOptions.rate = 100 / 2;
+    }
+    super({
+      logLevel,
+      workspace,
+      workingDirectory,
+      session,
+      sessionId,
+      schedulerOptions: { ...schedulerOptions, rate },
+    });
     this.apiKey = apiKey;
     this.secretApiKey = secretApiKey;
   }
@@ -54,7 +64,7 @@ export abstract class ABaseUploadService extends ABaseResumableService implement
       },
       run: () => {
         return new Promise<ITaskStatusChange>(async (resolve, reject) => {
-          await newTask.setStatus(ETaskStatus.RUNNING);
+          await newTask.update({ status: ETaskStatus.RUNNING });
           const matches = /\w+(?=\.)/.exec(file);
           if (!matches || !matches[0]) {
             this.ERROR(`Unknown parsing error occured parsing the filename: "${file}"`, null, reject);
@@ -75,7 +85,7 @@ export abstract class ABaseUploadService extends ABaseResumableService implement
                   )}`.padStart(3, ' ')}%] Uploaded JSON file for "${json.name}" to ipfs://${_ipfsHash}`,
                 );
                 this.INFO(`To mint with the CLI tool use "eznft mint ipfs://${_ipfsHash}"`);
-                await newTask.setStatus(ETaskStatus.SUCCESS);
+                await newTask.update({ status: ETaskStatus.SUCCESS, payload: { hash: _ipfsHash } });
                 resolve({
                   status: ETaskStatus.SUCCESS,
                   payload: _ipfsHash,
@@ -83,7 +93,7 @@ export abstract class ABaseUploadService extends ABaseResumableService implement
               })
               .catch(async (e: Error) => {
                 this.ERROR(`Failed to upload json file for "${file}"`);
-                await newTask.setStatus(ETaskStatus.FAILED);
+                await newTask.update({ status: ETaskStatus.FAILED });
                 resolve({
                   status: ETaskStatus.FAILED,
                   payload: e.message,
@@ -117,33 +127,43 @@ export abstract class ABaseUploadService extends ABaseResumableService implement
     });
   }
 
-  private cleanup(statuses: ITaskStatusChange[], resolve: (t: ITaskStatusChange[]) => void) {
+  private cleanup(
+    statuses: ITaskStatusChange[],
+    resolve: (value: ITaskStatusChange[] | PromiseLike<ITaskStatusChange[]>) => void,
+  ) {
     this.session.archive();
     const successes = statuses.filter(s => s.status === ETaskStatus.SUCCESS);
     this.LOG(
       `Uploaded ${successes.length} of ${statuses.length} assets and saved hashes to "${this.sessionDir}/session-state.json"`,
     );
+    fs.writeFileSync(path.join(process.cwd(), 'hashes.json'), JSON.stringify(statuses, null, 2));
     this.LOG('DONE');
     this.stop();
     resolve(statuses);
   }
 
   public resume(sessionProps: ISessionProps): Promise<ITaskStatusChange[]> {
-    return new Promise<ITaskStatusChange[]>(resolve => {
+    return new Promise<ITaskStatusChange[]>(async resolve => {
       this.session = new ServiceSession(sessionProps);
       const subtasks = (this.session.tasks || []).filter(task => task.status !== ETaskStatus.SUCCESS);
-      const tasks = subtasks.map((task, i) => {
+      let i = 0;
+      const tasks = this.session.tasks.map(task => {
         if (!(task instanceof SessionTask)) {
           const sourcePath = task.payload?.sourcePath;
           const file = task.payload?.file;
           if (!sourcePath || !file) {
-            this.ERROR('');
+            this.ERROR('OH NO!');
           }
-          return this.makeSessionTask(sourcePath, file, i, subtasks.length);
+          if (task.status === ETaskStatus.SUCCESS) {
+            return new SessionTask(task);
+          }
+          return this.makeSessionTask(sourcePath, file, i++, subtasks.length);
         }
         return task;
       });
-      return this.start(tasks).then(statuses => this.cleanup(statuses, resolve));
+      return this.start(tasks)
+        .then(statuses => this.cleanup(statuses, resolve))
+        .catch(e => console.log(e));
     });
   }
 }

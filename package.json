@@ -2,7 +2,7 @@
   "name": "eznft",
   "description": "Yet another library for generating NFT artwork, uploading NFT assets and metadata to IPFS, deploying NFT smart contracts, and minting NFT collections",
   "version": "0.0.12-1",
-  "main": "dist/index.js",
+  "main": "index.js",
   "export": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {

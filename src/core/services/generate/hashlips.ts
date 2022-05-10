@@ -21,10 +21,14 @@ export class HashLipsGeneratorService extends ABaseGeneratorService implements I
   }
 
   private get buildDir(): string {
-    return this.outputDir || path.join(this.sessionDir, 'build');
+    return this.outputDir || path.join(process.cwd(), 'build');
   }
 
   public generate(): Promise<void> {
+    if (!this.layers || !fs.existsSync(this.layers)) {
+      console.log('fuck');
+      return Promise.reject('');
+    }
     return new Promise<void>((resolve, reject) => {
       this.downloadRepo(this.repoDir)
         .then(dest => {

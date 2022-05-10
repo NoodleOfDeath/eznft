@@ -3,6 +3,9 @@
 .vscode/
 .eznft
 node_modules/
+build/
+hashes.json
+eznft.proj.json
 dist/
 tests/
 bin/

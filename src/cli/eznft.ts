@@ -14,6 +14,7 @@ import {
   ETaskStatus,
   EUploadServiceType,
   GeneratorServiceType,
+  ILayerOptions,
   UploadServiceType,
 } from '../types';
 import { Project, Workspace } from '../core';
@@ -22,16 +23,12 @@ dotenv.config();
 
 export default class CLI {
   public static main(): number {
-    function exit(status: number = 0, message: string = '') {
-      parser.exit(status, message);
-    }
-
     function usage() {
       parser.print_help();
-      exit();
+      process.exit(-1);
     }
 
-    function addCommonArgs(parser: ArgumentParser) {
+    function addVerbosityFlags(parser: ArgumentParser) {
       parser.add_argument('-q', '--quiet', { action: 'store_true', help: 'display console messages discreetly' });
       parser.add_argument('-vq', '--very-quiet', {
         action: 'store_true',
@@ -66,27 +63,31 @@ export default class CLI {
     const initParser = subparsers.add_parser('init', {
       help: 'initialize a new nft project in the current working directory',
     });
-    addCommonArgs(initParser);
+    addVerbosityFlags(initParser);
 
     const configParser = subparsers.add_parser('config', { help: 'list or set enzft configurations' });
-    addCommonArgs(configParser);
+    addVerbosityFlags(configParser);
 
     const resumeParser = subparsers.add_parser('resume', { help: 'resume a session that was interrupted' });
     resumeParser.add_argument('session', {
+      type: 'int',
+      default: null,
       help: 'the session to attempt resuming. required if there are multiple sessions that can be resumed.',
       nargs: '?',
     });
-    addCommonArgs(resumeParser);
+    addVerbosityFlags(resumeParser);
 
     subparsers.add_parser('clean', { help: 'cleans the current eznft workspace' });
 
     const generateParser = subparsers.add_parser('generate', { aliases: ['g', 'gen'], help: 'generate NFT artwork' });
     generateParser.add_argument('layers', {
       help: 'directory containing the layers to generate artwork from',
+      nargs: '?',
     });
     generateParser.add_argument('size', {
       type: 'int',
       help: 'size of the collection to generate',
+      nargs: '?',
     });
     generateParser.add_argument('-e', '--engine', {
       choices: [EGeneratorServiceType.HASHLIPS],
@@ -99,7 +100,7 @@ export default class CLI {
         'order to stack layers with the bottom one listed first separated by commans (i.e. "background, body, eyes, glasses")',
     });
     generateParser.add_argument('--opt', {
-      help: `specify options for each layer (i.e. ${chalk.grey(
+      help: `specify multiple options for each layer (i.e. ${chalk.grey(
         `--opt 'Background/opacity:0.5, displayName:"Background Color"' 'Fur/displayName: "Fur Color"'`,
       )})`,
       nargs: '*',
@@ -117,11 +118,12 @@ export default class CLI {
     generateParser.add_argument('-o', '--outputDir', {
       help: 'directory to output generated images and metadata to',
     });
-    addCommonArgs(generateParser);
+    addVerbosityFlags(generateParser);
 
     const uploadParser = subparsers.add_parser('upload', { aliases: ['u', 'up'], help: 'upload an NFT asset to IPFS' });
     uploadParser.add_argument('source', {
       help: 'source directory to upload NFT assets from',
+      nargs: '?',
     });
     uploadParser.add_argument('-i', '--ipfs', {
       choices: [EUploadServiceType.PINATA],
@@ -129,33 +131,27 @@ export default class CLI {
       help: 'ipfs service to upload nft assets to (default: %(default)s)',
       nargs: '?',
     });
-    uploadParser.add_argument('--api-key', {
-      help: `ipfs api key (default: <IPFS>_API_KEY)`,
-    });
-    uploadParser.add_argument('--secret-api-key', {
-      help: `ipfs secret api key (default: <IPFS>_SECRET_API_KEY)`,
-    });
-    addCommonArgs(uploadParser);
+    addVerbosityFlags(uploadParser);
 
-    const deployParser = subparsers.add_parser('deploy', { aliases: ['d', 'dep'], help: 'deploy a smart contract' });
-    deployParser.add_argument('contract', {
-      help: 'path of contract to deploy (.sol file)',
-    });
-    deployParser.add_argument('network', {
-      default: 'ropsten',
-      help: 'network to deploy contract to (default: %(default)s)',
-      nargs: '?',
-    });
-    addCommonArgs(deployParser);
+    // const deployParser = subparsers.add_parser('deploy', { aliases: ['d', 'dep'], help: 'deploy a smart contract' });
+    // deployParser.add_argument('contract', {
+    //   help: 'path of contract to deploy (.sol file)',
+    // });
+    // deployParser.add_argument('network', {
+    //   default: 'ropsten',
+    //   help: 'network to deploy contract to (default: %(default)s)',
+    //   nargs: '?',
+    // });
+    // addCommonArgs(deployParser);
 
-    const mintParser = subparsers.add_parser('mint', { aliases: ['m'], help: 'mint an NFT asset' });
-    mintParser.add_argument('contract', {
-      help: 'contract to mint with',
-    });
-    mintParser.add_argument('url', {
-      help: 'ipfs url to mint. may be of the format "ipfs://<cid>" or just "<cid>"',
-    });
-    addCommonArgs(mintParser);
+    // const mintParser = subparsers.add_parser('mint', { aliases: ['m'], help: 'mint an NFT asset' });
+    // mintParser.add_argument('contract', {
+    //   help: 'contract to mint with',
+    // });
+    // mintParser.add_argument('url', {
+    //   help: 'ipfs url to mint. may be of the format "ipfs://<cid>" or just "<cid>"',
+    // });
+    // addCommonArgs(mintParser);
 
     args = parser.parse_args();
 
@@ -170,49 +166,65 @@ export default class CLI {
       ? ELogLevel.LOG
       : ELogLevel.ESSENTIAL;
 
+    const project = new Project({ logLevel });
+    const workspace = new Workspace({ logLevel });
+
     if (/^init$/i.test(command)) {
       // INIT
       // TODO: INIT
-      Project.default.init();
+      project.init();
     } else if (/^config$/i.test(command)) {
       // CONFIG
       // TODO: CONFIG
     } else if (/^clean$/i.test(command)) {
       // CLEAN
-      Workspace.default.clean();
+      workspace.clean();
     } else if (/^g(en|enerate)?$/i.test(command)) {
       // GENERATE
-      const serviceType = args.engine as GeneratorServiceType;
-      const size = args.size as number;
-      const layers = args.layers as string;
-      const layerOrder = ((args.order as string) || '').split(/\s*,\s*/g).reverse();
-      const layerOptions = (args.opt || []) as string[];
-      const prefix = args.prefix as string;
-      const description = args.description as string;
-      const outputDir = args.outputDir as string;
+      const serviceName = (args.engine as GeneratorServiceType) || project.generate?.serviceName;
+      const layers = (args.layers as string) || project.generate?.layers;
+      if (!layers) {
+        console.log(
+          'ERROR: Could not find a required "layers" setting in the project config or passed as an argument.',
+        );
+        process.exit(-1);
+      }
+      const size = (args.size as number) || project.generate?.size;
+      if (!size) {
+        console.log('ERROR: Could not find a required "size" setting in the project config or passed as an argument.');
+        process.exit(-1);
+      }
+      const layerOrder = ((args.order as string)?.split(/\s*,\s*/g) || project.generate?.layerOrder || []).reverse();
+      const layerOptions = (args.opt || project.generate?.layerOptions || []) as
+        | string
+        | string[]
+        | Record<string, ILayerOptions>;
+      const prefix = (args.prefix as string) || project.generate?.prefix;
+      const description = (args.description as string) || project.generate?.description;
+      const outputDir = (args.outputDir as string) || project.generate?.outputDir;
       const generatorService = GeneratorService.load({
+        serviceName,
         logLevel,
-        size,
         layers,
+        size,
         layerOrder,
         layerOptions,
         prefix,
         description,
         outputDir,
-        serviceName: serviceType,
       });
       generatorService.generate();
     } else if (/^u(p|pload)?$/i.test(command)) {
       // UPLOAD
-      const serviceType = args.ipfs as UploadServiceType;
-      const source = args.source as string;
-      const apiKey = process.env[`${serviceType.toUpperCase()}_API_KEY`] || args.api_key;
-      const secretApiKey = process.env[`${serviceType.toUpperCase()}_SECRET_API_KEY`] || args.secret_api_key;
+      const serviceName = (args.ipfs as UploadServiceType) || project.upload?.serviceName;
+      const source = (args.source as string) || project.upload?.source;
+      const apiKey = process.env[`${serviceName.toUpperCase()}_API_KEY`];
+      const secretApiKey = process.env[`${serviceName.toUpperCase()}_SECRET_API_KEY`];
       const uploadService = UploadService.load({
+        serviceName,
         logLevel,
         apiKey,
         secretApiKey,
-        serviceName: serviceType,
       });
       uploadService.uploadAll(source);
     } else if (/^d(ep|eploy)?$/i.test(command)) {
@@ -222,8 +234,9 @@ export default class CLI {
       // MINT
       // TODO: - Mint
     } else if (/^resume$/i.test(command)) {
+      // RESUME
       let sessionIndex = args.session as number;
-      Workspace.default.getSessions().then(sessions => {
+      workspace.getSessions().then(sessions => {
         if (sessions.length === 0) {
           console.log(`No sessions to resume`);
         } else {
@@ -259,7 +272,11 @@ export default class CLI {
                 secretApiKey: process.env[`${session.service.serviceName.toUpperCase()}_SECRET_API_KEY`],
               });
               console.log(`Resuming session ${sessionIndex}`);
-              service.resume(session);
+              try {
+                service.resume(session).catch(e => console.error(e));
+              } catch (e) {
+                console.error(e);
+              }
             }
           }
         }

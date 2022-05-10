@@ -20,8 +20,8 @@ export interface IGeneratorService extends IResumableService {
 
 export type GeneratorServiceLayerOptionsType = string | string[] | Record<string, ILayerOptions>;
 export interface IGeneratorServiceProps extends IResumableServiceProps {
-  size: number;
-  layers: string;
+  size?: number;
+  layers?: string;
   layerOrder?: string[];
   layerOptions?: GeneratorServiceLayerOptionsType;
   prefix?: string;

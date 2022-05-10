@@ -15,7 +15,6 @@ import {
 } from '../../types';
 import { ABaseLoggable } from '../loggable';
 import { Workspace } from '../workspace';
-import { version } from '../../../package.json';
 
 export class SessionTask implements ITask {
   public readonly id: string;
@@ -33,18 +32,19 @@ export class SessionTask implements ITask {
     this.session = session;
     this.lastUpdate = lastUpdate;
     this.payload = payload;
-    this.run = run || (() => Promise.reject());
+    this.run = run || (() => Promise.reject(''));
   }
 
-  setStatus(status: ETaskStatus): Promise<boolean> {
+  update({ status, payload }: ITaskStatusChange): Promise<boolean> {
     this.status = status;
+    this.payload = payload;
     this.lastUpdate = Date.now();
     return this.session.recordState();
   }
 }
 
 export class ServiceSession extends ABaseLoggable implements ISession {
-  public readonly version = version;
+  public readonly version = '1.0';
   public readonly id: string;
   public readonly command?: string[];
   public readonly service: IService;
@@ -97,7 +97,7 @@ export class ServiceSession extends ABaseLoggable implements ISession {
     this.tasks = tasks || [];
     this.scheduler = new Bottleneck({
       maxConcurrent: schedulerOptions?.maxConcurrent || 1,
-      minTime: schedulerOptions?.minTime || 1000 / ((schedulerOptions?.rate || 150) / 60 / 2),
+      minTime: schedulerOptions?.minTime || schedulerOptions?.rate ? 1000 / (schedulerOptions.rate / 60) : 0,
     });
   }
 
@@ -109,8 +109,9 @@ export class ServiceSession extends ABaseLoggable implements ISession {
     if (tasks) this.tasks = tasks;
     this.started = Date.now();
     if (!fs.existsSync(this.directory)) fs.mkdirSync(this.directory, { recursive: true });
+    const unfinishedTasks = tasks.filter(task => task.status !== ETaskStatus.SUCCESS);
     return Promise.all(
-      this.tasks.map(async task => {
+      unfinishedTasks.map(async task => {
         return this.scheduler.schedule(() => {
           return task.run();
         });
@@ -128,7 +129,7 @@ export class ServiceSession extends ABaseLoggable implements ISession {
         path.join(this.directory, 'session.json'),
         JSON.stringify(
           {
-            version,
+            version: this.version,
             id: this.id,
             command: process.argv,
             started: this.started,
@@ -157,14 +158,14 @@ export class ServiceSession extends ABaseLoggable implements ISession {
   }
 
   public archive(): Promise<string> {
-    if (!fs.existsSync(this.directory)) return Promise.reject();
+    if (!fs.existsSync(this.directory)) return Promise.reject('');
     fs.copySync(this.directory, this.archivedDir);
     fs.removeSync(this.directory);
     return Promise.resolve(this.archivedDir);
   }
 
   public unarchive(): Promise<string> {
-    if (!fs.existsSync(this.archivedDir)) return Promise.reject();
+    if (!fs.existsSync(this.archivedDir)) return Promise.reject('');
     fs.copySync(this.archivedDir, this.directory);
     fs.removeSync(this.archivedDir);
     return Promise.resolve(this.directory);

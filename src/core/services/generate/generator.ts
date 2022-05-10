@@ -31,8 +31,10 @@ export abstract class ABaseGeneratorService extends ABaseResumableService implem
     outputDir,
   }: IGeneratorServiceProps) {
     super({ logLevel });
-    this.size = size;
-    this.layers = path.resolve(layers);
+    this.size = size || 0;
+    console.log(layers);
+    console.log(path.resolve(layers));
+    this.layers = layers ? path.resolve(layers) : '';
     this.layerOrder = layerOrder || [];
     if (typeof layerOptions === 'string') {
       try {

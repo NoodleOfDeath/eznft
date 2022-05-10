@@ -5,11 +5,18 @@ import { ABaseLoggable } from './loggable';
 import { ServiceSession } from './services/session';
 
 export class Workspace extends ABaseLoggable implements IWorkspace {
-  public readonly workingDirectory: string;
-
   public readonly logIdentifier = Workspace.name;
 
-  public static default = new Workspace({});
+  public readonly workingDirectory: string;
+
+  public get sessionsDirectory(): string {
+    return path.join(this.workingDirectory, 'sessions');
+  }
+  public get archivesDirectory(): string {
+    return path.join(this.workingDirectory, 'sessions/.archive');
+  }
+
+  private sessionFile = 'session.json';
 
   public constructor({ logLevel, workingDirectory }: IWorkspaceProps) {
     super({ logLevel });
@@ -18,7 +25,7 @@ export class Workspace extends ABaseLoggable implements IWorkspace {
 
   public clean(): Promise<boolean> {
     try {
-      if (fs.existsSync(this.workingDirectory)) fs.rmSync(this.workingDirectory, { recursive: true });
+      if (fs.existsSync(this.archivesDirectory)) fs.rmSync(this.workingDirectory, { recursive: true });
       return Promise.resolve(true);
     } catch (e) {
       return Promise.resolve(false);
@@ -28,18 +35,18 @@ export class Workspace extends ABaseLoggable implements IWorkspace {
   public getSessions(): Promise<ISession[]> {
     return Promise.all(
       fs
-        .readdirSync(path.join(this.workingDirectory, 'sessions'))
+        .readdirSync(this.sessionsDirectory)
         .filter(session => {
-          const sessionPath = path.join(this.workingDirectory, 'sessions', session);
+          const sessionPath = path.join(this.sessionsDirectory, session);
           if (!fs.existsSync(sessionPath)) return false;
           const lstat = fs.lstatSync(sessionPath);
           if (!lstat.isDirectory()) return false;
-          if (!fs.existsSync(path.join(sessionPath, 'session.json'))) return false;
+          if (!fs.existsSync(path.join(sessionPath, this.sessionFile))) return false;
           return !/^\.archive$/i.test(session);
         })
         .map(session => {
           const json = JSON.parse(
-            fs.readFileSync(path.join(this.workingDirectory, 'sessions', session, 'session.json'), {
+            fs.readFileSync(path.join(this.sessionsDirectory, session, this.sessionFile), {
               encoding: 'utf8',
             }),
           );

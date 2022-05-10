@@ -45,4 +45,5 @@ export type UploadServiceType = keyof typeof EUploadServiceType;
 
 export interface IUploadServiceProviderProps extends IUploadServiceProps {
   serviceName?: string;
+  source?: string;
 }
