@@ -12,6 +12,7 @@ import {
   ITaskStatusChange,
   ISessionProps,
   EServiceType,
+  IUploadOptions,
 } from '../../../types';
 import { ABaseResumableService } from '../resumable';
 import { ServiceSession, SessionTask } from '../session';
@@ -34,17 +35,13 @@ export abstract class ABaseUploadService extends ABaseResumableService implement
     secretApiKey,
   }: IUploadServiceProps) {
     // Divide the rate in half because each NFT is two API requests
-    let rate = schedulerOptions?.rate || 100 / 2;
-    if (rate > 100 / 2) {
-      schedulerOptions.rate = 100 / 2;
-    }
     super({
       logLevel,
       workspace,
       workingDirectory,
       session,
       sessionId,
-      schedulerOptions: { ...schedulerOptions, rate },
+      schedulerOptions: schedulerOptions,
     });
     this.apiKey = apiKey;
     this.secretApiKey = secretApiKey;
@@ -52,7 +49,14 @@ export abstract class ABaseUploadService extends ABaseResumableService implement
 
   public abstract upload(asset: IAsset): Promise<IIpfsHash>;
 
-  private makeSessionTask(sourcePath: string, file: string, index: number, total: number): SessionTask {
+  private makeSessionTask(
+    sourcePath: string,
+    file: string,
+    index: number,
+    total: number,
+    ignoreImages = false,
+    uploadJson = false,
+  ): SessionTask {
     const newTask = new SessionTask({
       id: file,
       service: this,
@@ -71,20 +75,41 @@ export abstract class ABaseUploadService extends ABaseResumableService implement
             return;
           }
           const jsonFile = `${matches[0]}.json`;
-          this.upload(AssetCreate({ filePath: path.join(sourcePath, 'images', file) })).then(async ipfsHash => {
+          let json = JSON.parse(fs.readFileSync(path.join(sourcePath, 'json', jsonFile), { encoding: 'utf8' }));
+
+          const updateJsonFromIpfs = async (ipfsHash: IIpfsHash) => {
             await this.session.recordState();
-            let json = JSON.parse(fs.readFileSync(path.join(sourcePath, 'json', jsonFile), { encoding: 'utf8' }));
             json.image = `ipfs://${ipfsHash}`;
             if (json.compiler) delete json.compiler;
             fs.writeFileSync(path.join(sourcePath, 'json', jsonFile), JSON.stringify(json, null, 2));
+            this.LOG(
+              `[${`${index + 1}/${total}`.padStart(2 * Math.log(total) + 1, ' ')} - ${`${Math.round(
+                ((index + 1) / total) * 100,
+              )}`.padStart(3, ' ')}%] Uploaded image file for "${json.name}" to ipfs://${ipfsHash}`,
+            );
+            if (uploadJson) {
+              uploadJsonToIpfs();
+            } else {
+              await newTask.update({ status: ETaskStatus.SUCCESS, payload: { hash: ipfsHash } });
+              resolve({
+                status: ETaskStatus.SUCCESS,
+                payload: ipfsHash,
+              });
+            }
+          };
+
+          const uploadJsonToIpfs = () => {
             this.upload(AssetCreate({ filePath: path.join(sourcePath, 'json', jsonFile) }))
               .then(async _ipfsHash => {
                 this.LOG(
-                  `[${`${index + 1}/${total}`.padStart(2 * Math.log(total) + 1, ' ')} - ${`${Math.round(
-                    ((index + 1) / total) * 100,
-                  )}`.padStart(3, ' ')}%] Uploaded JSON file for "${json.name}" to ipfs://${_ipfsHash}`,
+                  `[${`${index + (ignoreImages ? 1 : 2)}/${total}`.padStart(
+                    2 * Math.log(total) + 1,
+                    ' ',
+                  )} - ${`${Math.round(((index + (ignoreImages ? 1 : 2)) / total) * 100)}`.padStart(
+                    3,
+                    ' ',
+                  )}%] Uploaded JSON file for "${json.name}" to ipfs://${_ipfsHash}`,
                 );
-                this.INFO(`To mint with the CLI tool use "eznft mint ipfs://${_ipfsHash}"`);
                 await newTask.update({ status: ETaskStatus.SUCCESS, payload: { hash: _ipfsHash } });
                 resolve({
                   status: ETaskStatus.SUCCESS,
@@ -99,14 +124,20 @@ export abstract class ABaseUploadService extends ABaseResumableService implement
                   payload: e.message,
                 });
               });
-          });
+          };
+
+          if (!ignoreImages) {
+            this.upload(AssetCreate({ filePath: path.join(sourcePath, 'images', file) })).then(updateJsonFromIpfs);
+          } else if (uploadJson) {
+            uploadJsonToIpfs();
+          }
         });
       },
     });
     return newTask;
   }
 
-  public uploadAll(source: string): Promise<IIpfsHash[]> {
+  public uploadAssets(source: string, options?: IUploadOptions): Promise<IIpfsHash[]> {
     return new Promise<any>(async (resolve, reject) => {
       const sourcePath = path.resolve(source);
       if (!fs.existsSync(sourcePath)) {
@@ -120,8 +151,24 @@ export abstract class ABaseUploadService extends ABaseResumableService implement
         return;
       }
       const files = fs.readdirSync(path.join(sourcePath, 'images'));
+      const deltaRate = options?.uploadJson ? 50 : 100;
+      let rate = this.schedulerOptions?.rate || deltaRate;
+      if (rate > deltaRate) {
+        this.schedulerOptions.rate = deltaRate;
+      }
       this.session = this.generateSession();
-      this.start(files.map((file, i) => this.makeSessionTask(sourcePath, file, i, files.length))).then(statuses => {
+      this.start(
+        files.map((file, i) =>
+          this.makeSessionTask(
+            sourcePath,
+            file,
+            i * (!options?.ignoreImages && options?.uploadJson ? 2 : 1),
+            (options?.ignoreImages ? 0 : files.length) + (options?.uploadJson ? files.length : 0),
+            options?.ignoreImages,
+            options?.uploadJson,
+          ),
+        ),
+      ).then(statuses => {
         return this.cleanup(statuses, resolve);
       });
     });
@@ -133,9 +180,7 @@ export abstract class ABaseUploadService extends ABaseResumableService implement
   ) {
     this.session.archive();
     const successes = statuses.filter(s => s.status === ETaskStatus.SUCCESS);
-    this.LOG(
-      `Uploaded ${successes.length} of ${statuses.length} assets and saved hashes to "${this.sessionDir}/session-state.json"`,
-    );
+    this.LOG(`Uploaded ${successes.length} of ${statuses.length} assets`);
     fs.writeFileSync(path.join(process.cwd(), 'hashes.json'), JSON.stringify(statuses, null, 2));
     this.LOG('DONE');
     this.stop();

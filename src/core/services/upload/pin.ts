@@ -18,10 +18,7 @@ export class PinataUploadService extends ABaseUploadService {
     this.INFO(`Uploading asset: ${Object.entries(asset).map(entry => `(${entry[0]}, ${entry[1]})`)}`);
     return new Promise<any>((resolve, reject) => {
       this.client
-        .pinFileToIPFS(asset.stream, {
-          pinataMetadata: asset.metadata,
-          pinataOptions: asset.options,
-        })
+        .pinFileToIPFS(asset.stream)
         .then(result => {
           this.INFO(
             `Successfully uploaded with response: ${Object.entries(result).map(entry => `(${entry[0]}, ${entry[1]})`)}`,

@@ -153,7 +153,7 @@ const uploadService = UploadService.load({
   // Type of upload to use. Defaults to "hashlips"
   type: "pinata",
 });
-uploadService.uploadAll('~/my-nft-project/output');
+uploadService.uploadAssets('~/my-nft-project/output', { uploadJsonAssets: true });
 ```
 
 ## Contribute

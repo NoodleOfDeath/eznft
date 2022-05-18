@@ -15,7 +15,9 @@ import {
   EUploadServiceType,
   GeneratorServiceType,
   ILayerOptions,
-  UploadServiceType,
+  IUploadOptions,
+  KUploadOptions,
+  KUploadServiceType,
 } from '../types';
 import { Project, Workspace } from '../core';
 
@@ -131,6 +133,12 @@ export default class CLI {
       help: 'ipfs service to upload nft assets to (default: %(default)s)',
       nargs: '?',
     });
+    uploadParser.add_argument('--opt', {
+      choices: ['ignoreImages', 'uploadJson'],
+      default: [],
+      help: 'specify multiple upload options',
+      nargs: '*',
+    });
     addVerbosityFlags(uploadParser);
 
     // const deployParser = subparsers.add_parser('deploy', { aliases: ['d', 'dep'], help: 'deploy a smart contract' });
@@ -216,8 +224,9 @@ export default class CLI {
       generatorService.generate();
     } else if (/^u(p|pload)?$/i.test(command)) {
       // UPLOAD
-      const serviceName = (args.ipfs as UploadServiceType) || project.upload?.serviceName;
+      const serviceName = (args.ipfs as KUploadServiceType) || project.upload?.serviceName;
       const source = (args.source as string) || project.upload?.source;
+      const opts = (args.opt as KUploadOptions[]) || [];
       const apiKey = process.env[`${serviceName.toUpperCase()}_API_KEY`];
       const secretApiKey = process.env[`${serviceName.toUpperCase()}_SECRET_API_KEY`];
       const uploadService = UploadService.load({
@@ -226,7 +235,7 @@ export default class CLI {
         apiKey,
         secretApiKey,
       });
-      uploadService.uploadAll(source);
+      uploadService.uploadAssets(source, Object.assign({}, ...opts.map(opt => ({ [opt]: true }))) as IUploadOptions);
     } else if (/^d(ep|eploy)?$/i.test(command)) {
       // DEPLOY
       // TODO: - Deploy
